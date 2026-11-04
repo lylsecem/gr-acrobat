@@ -44,4 +44,5 @@ jobs:
         with:
           name: test-output
           path: tests/.out/
+          include-hidden-files: true      # .out starts with a dot
           retention-days: 7

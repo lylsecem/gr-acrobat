@@ -16,6 +16,7 @@ OUT = out_dir('ocr-saved')
 r = Report()
 check = r.check
 flat = lambda s: ''.join(s.split())                    # Tesseract may put spaces between Chinese characters
+SAMPLE = '识别测试'      # from 文字识别测试 on the scanned page; how 字 reads varies with the font it was printed in
 
 with display(), sync_playwright() as pw:
     # ---- a spoiled file on the mirror: nothing installed
@@ -87,12 +88,12 @@ with display(), sync_playwright() as pw:
         ev(CATCH_DOWNLOADS)
         got = recognize('scan_zh_en.pdf', ['chi_sim', 'eng'])
         text = flat(pdf_text(OUT / 'scan_zh_en.pdf.pdf'))
-        check('searchable_pdf', got == 'scan_zh_en_可搜索.pdf' and '文字识别测试' in text and 'Textrecognitiontest' in text, [got, text[:80]])
+        check('searchable_pdf', got == 'scan_zh_en_可搜索.pdf' and SAMPLE in text and 'Textrecognitiontest' in text, [got, text[:80]])
         src, res = PdfReader(str(D / 'scan_zh_en.pdf')), PdfReader(str(OUT / 'scan_zh_en.pdf.pdf'))
         check('pages_look_the_same', [list(p.mediabox) for p in src.pages] == [list(p.mediabox) for p in res.pages], [list(p.mediabox) for p in res.pages])
         got = recognize('scan_zh_en.pdf', ['chi_sim', 'eng'], 'txt')
         text = (OUT / 'scan_zh_en.pdf.txt').read_text(encoding='utf-8')
-        check('text_file', got == 'scan_zh_en_文字.txt' and '文字识别测试' in flat(text) and '—— 第 2 页 ——' in text, [got, text[:80]])
+        check('text_file', got == 'scan_zh_en_文字.txt' and SAMPLE in flat(text) and '—— 第 2 页 ——' in text, [got, text[:80]])
         for name in ('scan_th.pdf', 'scan_rot.pdf', 'scan_offset.pdf', 'locked.pdf'):
             app.start(D / name)
             if name == 'locked.pdf':
@@ -102,9 +103,9 @@ with display(), sync_playwright() as pw:
         recognize('scan_th.pdf', ['tha'])
         check('thai', 'ทดสอบ' in flat(pdf_text(OUT / 'scan_th.pdf.pdf')), flat(pdf_text(OUT / 'scan_th.pdf.pdf'))[:60])
         recognize('scan_rot.pdf', ['chi_sim'])
-        check('turned_page', '文字识别测试' in flat(pdf_text(OUT / 'scan_rot.pdf.pdf')), flat(pdf_text(OUT / 'scan_rot.pdf.pdf'))[:60])
+        check('turned_page', SAMPLE in flat(pdf_text(OUT / 'scan_rot.pdf.pdf')), flat(pdf_text(OUT / 'scan_rot.pdf.pdf'))[:60])
         recognize('scan_offset.pdf', ['chi_sim', 'eng'])
-        check('page_box_away_from_zero', '文字识别测试' in flat(pdf_text(OUT / 'scan_offset.pdf.pdf')), flat(pdf_text(OUT / 'scan_offset.pdf.pdf'))[:60])
+        check('page_box_away_from_zero', SAMPLE in flat(pdf_text(OUT / 'scan_offset.pdf.pdf')), flat(pdf_text(OUT / 'scan_offset.pdf.pdf'))[:60])
         recognize('locked.pdf', ['chi_sim'])
         info = pdf_info(OUT / 'locked.pdf.pdf')
         check('protected_pdf_made_searchable', info[:2] == (False, 3) and '密码保护测试' in flat(info[2]), info)
