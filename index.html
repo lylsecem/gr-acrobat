@@ -1,0 +1,3258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GR Acrobat</title>
+<script src="i18n.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<style>
+  @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('vendor/fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('vendor/fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('vendor/fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2'); }
+  /* GR Acrobat — framed-sheet app style (taste-skill, app screens).
+     A tinted L-frame holds the tools; the work sits on a white sheet with a 1px edge and no shadow;
+     documents sit in a flat well one step darker. Colour lives on the selection and on the documents. */
+  :root {
+    --font-ui: 'IBM Plex Sans', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', system-ui, sans-serif;
+
+    --frame: #f2f5f4;        /* the frame, tinted from the product's teal */
+    --sheet: #ffffff;
+    --well: #edf0ef;         /* where pages sit */
+    --raised: #f5f7f6;       /* hover on the sheet */
+    --hover-well: rgba(19, 23, 22, 0.05);
+    --active: #e2e7e5;       /* active nav item, neutral pills */
+    --border: #e3e7e5;
+    --rule: #eceeed;
+    --control: #cbd1ce;
+    --text: #131716;
+    --muted: #565d5a;
+    --faint: #6a706d;
+    --primary: #1b1f1e;
+    --primary-hover: #343a38;
+    --on-primary: #ffffff;
+    --accent: #1f7a6c;
+    --accent-soft: #e0f0ec;
+    --negative: #c4242a;
+    --negative-soft: #ffedea;
+    --page-edge: rgba(0, 0, 0, 0.10);
+    --ink-base: #000000;
+    --scrim: rgba(15, 20, 18, 0.45);
+    --float-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+
+    --radius-sheet: 16px;
+    --radius-card: 8px;
+    --radius-control: 6px;
+    --radius-chip: 4px;
+    --control-h: 32px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --frame: #0e0e0e; --sheet: #171717; --well: #101010; --raised: #1f1f1f;
+      --hover-well: rgba(255, 255, 255, 0.05); --active: #2a2a2a;
+      --border: #262626; --rule: #212121; --control: #454545;
+      --text: #f2f2f2; --muted: #b4b4b4; --faint: #949494;
+      --primary: #f2f2f2; --primary-hover: #d6d6d6; --on-primary: #0e0e0e;
+      --accent: #4fbfa9; --accent-soft: #15302a;
+      --negative: #e5566f; --negative-soft: #2c1a20;
+      --page-edge: rgba(255, 255, 255, 0.10); --ink-base: #ffffff;
+      --scrim: rgba(0, 0, 0, 0.6); --float-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --frame: #0e0e0e; --sheet: #171717; --well: #101010; --raised: #1f1f1f;
+    --hover-well: rgba(255, 255, 255, 0.05); --active: #2a2a2a;
+    --border: #262626; --rule: #212121; --control: #454545;
+    --text: #f2f2f2; --muted: #b4b4b4; --faint: #949494;
+    --primary: #f2f2f2; --primary-hover: #d6d6d6; --on-primary: #0e0e0e;
+    --accent: #4fbfa9; --accent-soft: #15302a;
+    --negative: #e5566f; --negative-soft: #2c1a20;
+    --page-edge: rgba(255, 255, 255, 0.10); --ink-base: #ffffff;
+    --scrim: rgba(0, 0, 0, 0.6); --float-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Thai has its own letters: Windows' Leelawadee UI shows them (IBM Plex Sans covers the Latin ones). */
+  html:lang(th) { --font-ui: 'IBM Plex Sans', 'Leelawadee UI', 'Leelawadee', Tahoma, 'Noto Sans Thai', 'Microsoft YaHei UI', system-ui, sans-serif; }
+  html.i18n-pending body { visibility: hidden; }    /* until the markup is shown in the chosen language */
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--frame); color: var(--text);
+    font-family: var(--font-ui); font-size: 14px; line-height: 20px;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  input, select { font: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  input[type="file"] { display: none; }
+  input[type="range"], input[type="radio"], input[type="checkbox"] { accent-color: var(--accent); }
+  input[type="radio"], input[type="checkbox"] { margin: 0; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--control); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--faint); }
+
+  /* ---------- Shell: frame + sheet ---------- */
+  .app { display: grid; grid-template-columns: 228px minmax(0, 1fr); height: 100vh; height: 100dvh; }
+  .side { display: flex; flex-direction: column; gap: 20px; min-height: 0; overflow-y: auto; padding: 12px 10px 16px; background: var(--frame); }
+  .brandrow { display: flex; align-items: center; gap: 10px; padding: 6px 8px; }
+  .brandrow svg { width: 28px; height: 28px; flex: none; }
+  .pname-app { font-size: 15px; font-weight: 600; line-height: 20px; }
+  .pby { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .tab-btn {
+    display: flex; align-items: center; gap: 10px;
+    height: 34px; padding: 0 10px; border: 0; border-radius: var(--radius-card);
+    background: transparent; color: var(--text); text-align: left; white-space: nowrap;
+  }
+  .tab-btn svg { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .tab-btn:hover { background: var(--hover-well); }
+  .tab-btn.active { background: var(--active); font-weight: 500; }
+  .tab-btn.active svg { stroke: var(--text); }
+  .side-foot { margin-top: auto; padding: 0 10px; font-size: 12px; line-height: 18px; color: var(--muted); }
+
+  .main-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .top { flex: none; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 16px 0 12px; }
+  .screen-title { margin: 0; min-width: 0; font-size: 16px; font-weight: 600; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .screen-meta { flex: none; font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .spacer { flex: 1 1 auto; }
+  .menu-btn { display: none; }
+  .btn.print-btn { height: 38px; padding: 0 20px 0 16px; gap: 8px; font-size: 15px; font-weight: 600; }   /* the top bar's one action */
+  .print-btn svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .canvas-sheet {
+    position: relative; flex: 1 1 auto; min-height: 0; display: flex;
+    margin: 0 8px 8px 0; overflow: hidden;
+    background: var(--sheet); border: 1px solid var(--border); border-radius: var(--radius-sheet);
+  }
+  .nav-scrim { display: none; }
+
+  /* ---------- Controls ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: var(--control-h); padding: 0 12px; white-space: nowrap;
+    border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 14px; font-weight: 500;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .btn:hover { background: var(--raised); }
+  .btn:active { background: var(--active); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  .btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn.ghost { background: transparent; border-color: transparent; }
+  .btn.ghost:hover { background: var(--hover-well); }
+  .btn.danger { color: var(--negative); }
+  .btn.danger:hover { background: var(--negative-soft); border-color: var(--negative); }
+  .btn:disabled, .btn:disabled:hover {
+    cursor: not-allowed; background: var(--sheet); border-color: var(--rule); color: var(--faint);
+  }
+  .btn.primary:disabled { background: var(--active); border-color: var(--active); color: var(--faint); }
+  .btn.small { height: 28px; padding: 0 10px; font-size: 13px; }
+  .btn.icon { width: 28px; padding: 0; }
+  select {
+    height: var(--control-h); padding: 0 8px; border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 14px;
+  }
+  .count-pill {
+    flex: none; padding: 0 8px; border-radius: var(--radius-chip);
+    background: var(--active); color: var(--text); font-size: 12px; line-height: 22px; white-space: nowrap;
+  }
+  .nudge { color: var(--muted); font-size: 13px; }
+  .progress-line { min-height: 20px; color: var(--muted); font-size: 13px; }
+  .linkbtn { padding: 0; border: 0; background: none; color: var(--text); font-size: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---------- Viewer, split, to images ---------- */
+  .viewer-layout { display: flex; flex-direction: column; width: 100%; min-height: 0; }
+  .viewer-body { flex: 1 1 auto; display: flex; min-height: 0; }
+  /* open documents, one tab each, above the page */
+  .doc-tabs {
+    flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 6px 8px 0; overflow-x: auto; overflow-y: hidden;
+    background: var(--well); box-shadow: inset 0 -1px 0 var(--rule); scrollbar-width: thin;   /* the front tab covers the line */
+  }
+  .doc-tab {
+    flex: 0 1 200px; min-width: 112px; height: 34px; display: flex; align-items: center;
+    border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; color: var(--muted);
+  }
+  .doc-tab:hover { background: var(--hover-well); }
+  .doc-tab.active { background: var(--sheet); border-color: var(--rule); color: var(--text); }
+  .doc-tab-name {
+    flex: 1 1 auto; min-width: 0; height: 100%; padding: 0 4px 0 12px; border: 0; background: none; color: inherit;
+    font-size: 13px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;
+  }
+  .doc-tab.active .doc-tab-name { font-weight: 500; }
+  .doc-tab-x {
+    flex: none; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-right: 6px;
+    padding: 0; border: 0; border-radius: var(--radius-chip); background: none; color: inherit; opacity: 0;
+  }
+  .doc-tab.active .doc-tab-x, .doc-tab:hover .doc-tab-x, .doc-tab-x:focus-visible { opacity: 1; }
+  .doc-tab-x:hover { background: var(--hover-well); }
+  .doc-tab.active .doc-tab-x:hover { background: var(--raised); }
+  .doc-tab-x svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .doc-tab-add {
+    flex: none; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: 0 0 2px 2px;
+    padding: 0; border: 0; border-radius: var(--radius-control); background: none; color: var(--muted);
+  }
+  .doc-tab-add:hover { background: var(--hover-well); color: var(--text); }
+  .doc-tab-add svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .rail { flex: none; width: 132px; overflow-y: auto; padding: 12px 10px; background: var(--sheet); border-right: 1px solid var(--rule); }
+  .thumb {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 0.72; margin-bottom: 10px; padding: 6px; border-radius: var(--radius-card); cursor: pointer;
+  }
+  .thumb canvas { display: block; max-width: 100%; max-height: 100%; background: #fff; box-shadow: 0 0 0 1px var(--page-edge); }
+  .thumb:hover { background: var(--raised); }
+  .thumb.current, .thumb.checked { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .thumb-num {
+    position: absolute; right: 8px; bottom: 8px; padding: 0 5px; border-radius: var(--radius-chip);
+    background: var(--sheet); color: var(--muted); font-size: 11px; line-height: 16px; box-shadow: 0 0 0 1px var(--border);
+  }
+  .thumb-check {
+    position: absolute; top: 10px; left: 10px; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: var(--radius-chip);
+    border: 1.5px solid var(--control); background: var(--sheet);
+  }
+  .thumb.checked .thumb-check { background: var(--accent); border-color: var(--accent); }
+  .thumb-check svg { display: none; width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2.5; }
+  .thumb.checked .thumb-check svg { display: block; }
+  .viewer-layout:not(.selecting) .thumb-check { display: none; }
+
+  .stage-col { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .stage-toolbar, .select-toolbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    min-height: 48px; padding: 8px 16px; background: var(--sheet); border-bottom: 1px solid var(--rule);
+  }
+  .select-toolbar label { color: var(--muted); font-size: 13px; }
+  .select-toolbar input[type="text"] {
+    width: 140px; height: 28px; padding: 0 8px; border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 13px;
+  }
+  .select-toolbar select { height: 28px; font-size: 13px; }
+  .pagejump { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+  .pagejump input {
+    width: 46px; height: 28px; text-align: center; border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 13px;
+  }
+  .zoomgroup { display: flex; align-items: center; gap: 4px; }
+  .tb-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--rule); }
+
+  .stage {
+    flex: 1 1 auto; display: flex; justify-content: safe center; align-items: safe center;
+    overflow: auto; padding: 24px; background: var(--well);
+  }
+  .page-wrap { position: relative; line-height: 0; background: #fff; box-shadow: 0 0 0 1px var(--page-edge); }
+  .page-wrap canvas { display: block; }
+  .stage-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 360px; text-align: center; }
+  .stage-empty .empty-title { font-size: 16px; font-weight: 600; line-height: 24px; }
+  .stage-empty .hint { color: var(--muted); font-size: 14px; }
+  .stage-empty .btn { margin-top: 12px; }
+
+  /* ---------- 转换: pictures to a PDF, a PDF to pictures ---------- */
+  .convert { width: 100%; display: flex; gap: 24px; padding: 32px; overflow: auto; background: var(--well); }
+  .cv-zone {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    padding: 32px 24px; text-align: center; cursor: pointer;
+    border: 2px dashed var(--control); border-radius: var(--radius-card); background: var(--sheet);
+    color: var(--muted); font-size: 13px; line-height: 20px; transition: border-color 0.12s, background-color 0.12s;
+  }
+  .cv-zone:hover, .cv-zone:focus-visible, .cv-zone.drag { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+  .cv-icon { width: 84px; height: 72px; margin-bottom: 8px; fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .cv-title { color: var(--text); font-size: 18px; font-weight: 600; line-height: 26px; }
+  .cv-opt { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--text); cursor: default; }
+  .cv-opt select { height: 28px; font-size: 13px; }
+  .cv-status { min-height: 20px; color: var(--text); }
+  .cv-dir { display: flex; align-items: center; gap: 8px; }
+  .cv-dir span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+
+  /* ---------- Merge and organize ---------- */
+  .organizer { position: relative; display: flex; width: 100%; min-height: 0; }
+  .org-side { flex: none; display: flex; flex-direction: column; gap: 12px; width: 240px; overflow-y: auto; padding: 16px; background: var(--sheet); border-right: 1px solid var(--rule); }
+  .org-side-head { display: flex; align-items: center; justify-content: space-between; }
+  .org-side-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  #orgAddCurrent { align-self: flex-start; }
+  .org-docs { display: flex; flex-direction: column; gap: 2px; }
+  .org-doc { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 4px 4px 8px; border-radius: var(--radius-control); cursor: grab; }
+  .org-doc:hover { background: var(--raised); }
+  .org-doc:active { cursor: grabbing; }
+  .org-doc .sw { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--src); }
+  .org-doc .dm { flex: 1 1 auto; min-width: 0; }
+  .org-doc .dn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .org-doc .dc { flex: none; color: var(--muted); font-size: 12px; }
+  .org-doc .x {
+    flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-chip);
+    background: transparent; color: var(--muted); font-size: 12px; opacity: 0;
+  }
+  .org-doc:hover .x, .org-doc:focus-within .x { opacity: 1; }
+  .org-doc .x:hover { background: var(--negative-soft); color: var(--negative); }
+  .org-tip { margin-top: auto; color: var(--muted); font-size: 12px; line-height: 20px; }
+  /* While pages are dragged, the document list takes them: they become a new document. */
+  .org-split-zone {
+    display: none; flex: 1 1 auto; min-height: 120px; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 16px; border: 1px dashed var(--accent); border-radius: var(--radius-card);
+    color: var(--muted); font-size: 12px; line-height: 18px; text-align: center;
+    transition: background-color 0.12s;
+  }
+  .org-split-zone b { color: var(--text); font-size: 14px; font-weight: 600; }
+  .org-side.split-ready .org-split-zone { display: flex; }
+  .org-side.split-over { background: var(--accent-soft); }
+  .org-side.split-over .org-split-zone { border-style: solid; background: var(--sheet); }
+
+  .org-main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .org-bar, .org-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 48px; padding: 8px 16px; background: var(--sheet); }
+  .org-bar { border-bottom: 1px solid var(--rule); }
+  .org-foot { border-top: 1px solid var(--rule); }
+  .org-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--rule); }
+  .org-zoom, .org-name-l { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+  .org-name-l input {
+    width: 160px; height: var(--control-h); padding: 0 10px; border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 14px;
+  }
+  .org-total { color: var(--muted); font-size: 13px; }
+  #orgStatus { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }   /* fills the gap; never pushes the buttons onto a second line */
+  .org-scroll { position: relative; flex: 1 1 auto; overflow: auto; padding: 24px 24px 64px; background: var(--well); }
+  .org-grid { --tile-w: 150px; display: grid; grid-template-columns: repeat(auto-fill, var(--tile-w)); gap: 20px 18px; }
+
+  .ptile, .org-doc {
+    --src-soft: color-mix(in srgb, var(--src) 18%, var(--sheet));
+    --src-ink: color-mix(in srgb, var(--src) 55%, var(--ink-base));
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .ptile, :root:not([data-theme="light"]) .org-doc { --src-soft: color-mix(in srgb, var(--src) 26%, var(--sheet)); --src-ink: color-mix(in srgb, var(--src) 45%, var(--ink-base)); }
+  }
+  .ptile { position: relative; padding: 6px; border-radius: var(--radius-card); user-select: none; -webkit-user-select: none; }
+  .ptile:hover { background: var(--hover-well); }
+  .ptile.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .ptile.dragging { opacity: 0.3; }
+  .pframe { position: relative; aspect-ratio: 1 / 1; }
+  .pimg, .sheet {
+    position: absolute; left: 50%; top: 50%; width: 70.7%; height: 100%;
+    transform: translate(-50%, -50%);
+    background: #fff; box-shadow: 0 0 0 1px var(--page-edge);
+    transition: transform 0.18s ease;
+  }
+  .pimg canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 0.15s; }
+  .ptile.ready .pimg canvas { opacity: 1; }
+  .pstack .sheet:nth-child(1) { opacity: 0.6; }
+  .pstack .sheet:nth-child(2) { opacity: 0.85; }
+  .pstack.pair .sheet:nth-child(1), .pstack.single .sheet { display: none; }
+  .pacts { position: absolute; top: 2px; right: 2px; z-index: 2; display: flex; gap: 2px; opacity: 0; transition: opacity 0.12s; }
+  .ptile:hover .pacts, .ptile:focus-within .pacts { opacity: 1; }
+  .pacts button {
+    display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0;
+    border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 13px; line-height: 1;
+  }
+  .pacts button:hover { background: var(--raised); }
+  .pacts button.d:hover { border-color: var(--negative); color: var(--negative); }
+  .pcap { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin-top: 8px; font-size: 12px; line-height: 16px; }
+  .pnum { flex: none; min-width: 1.8em; color: var(--text); font-weight: 600; white-space: nowrap; }
+  .psrc { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; color: var(--muted); white-space: nowrap; }
+  .psrc i { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--src); }
+  .pname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pcount {
+    position: absolute; right: 2px; bottom: 2px; z-index: 2; padding: 0 7px; border-radius: var(--radius-chip);
+    background: var(--src-soft); color: var(--src-ink); font-size: 12px; font-weight: 500; line-height: 20px;
+  }
+  .pexpand {
+    position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%);
+    height: 32px; padding: 0 12px; border: 0; border-radius: var(--radius-control);
+    background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500; white-space: nowrap;
+    opacity: 0; transition: opacity 0.12s;
+  }
+  .pstack:hover .pexpand, .pstack:focus-within .pexpand { opacity: 1; }
+  .pexpand:hover { background: var(--primary-hover); }
+  .pcollapse {
+    position: absolute; top: 2px; left: 2px; z-index: 3; display: none; align-items: center;
+    height: 24px; padding: 0 8px; border: 0; border-radius: var(--radius-chip);
+    background: var(--src-soft); color: var(--src-ink); font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  .ptile.docstart .pcollapse { display: inline-flex; }
+  .pcollapse:hover { box-shadow: inset 0 0 0 1px var(--src-ink); }
+  .org-marker { position: absolute; z-index: 5; display: none; width: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+  .org-empty {
+    position: absolute; inset: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px; text-align: center; color: var(--muted); font-size: 14px; line-height: 22px;
+    border: 1px dashed var(--control); border-radius: var(--radius-card);
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .org-scroll.drop-files .org-empty { border-color: var(--accent); background: var(--accent-soft); }
+  .org-empty .big { margin-bottom: 4px; color: var(--text); font-size: 16px; font-weight: 600; }
+  .org-ghost {
+    position: fixed; top: -200px; left: -200px; padding: 6px 10px; border-radius: var(--radius-control);
+    background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 500;
+  }
+
+  /* ---------- Page preview (floats) ---------- */
+  .pv { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; background: rgba(10, 12, 11, 0.9); }
+  .pv-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; color: #f2f2f2; font-size: 14px; }
+  .pv-stage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .pv-stage canvas { background: #fff; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+  .pv-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 64px; border: 0; border-radius: var(--radius-card);
+    background: rgba(255, 255, 255, 0.08); color: #fff; font-size: 26px;
+  }
+  .pv-nav:hover { background: rgba(255, 255, 255, 0.16); }
+  .pv-nav:disabled { opacity: 0.3; cursor: default; }
+  .pv-nav.l { left: 16px; }
+  .pv-nav.r { right: 16px; }
+
+  /* ---------- Print dialog (floats) ---------- */
+  .pd-back { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--scrim); }
+  .pd {
+    width: min(420px, 100%); padding: 20px 24px;
+    background: var(--sheet); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--float-shadow);
+  }
+  .pd-title { font-size: 16px; font-weight: 600; line-height: 24px; }
+  .pd-file { margin: 2px 0 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; }
+  .pd-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .pd-label { font-size: 14px; font-weight: 500; }
+  .pd-group label { display: flex; align-items: center; gap: 8px; }
+  .pd-group label:has(input:disabled) { color: var(--faint); }
+  .pd-group input[type="text"] {
+    width: 150px; height: 28px; padding: 0 8px; border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 13px;
+  }
+  .pd-group select { width: 100%; }
+  .pd-note { color: var(--muted); font-size: 13px; line-height: 20px; }
+  .pd-progress { min-height: 20px; margin: 12px 0 4px; color: var(--muted); font-size: 13px; }
+  .pd-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .pw-input {
+    width: 100%; height: var(--control-h); padding: 0 10px; border: 1px solid var(--control); border-radius: var(--radius-control);
+    background: var(--sheet); color: var(--text); font-size: 14px;
+  }
+  .pw-msg { color: var(--negative); }
+  .msg-text { margin: 6px 0 20px; white-space: pre-line; }
+
+  /* Hand tool: a page larger than the view is dragged around with the left button (as in Photoshop). */
+  .stage.can-pan, .stage.can-pan * { cursor: grab; }
+  .stage.panning, .stage.panning * { cursor: grabbing; }
+
+  #printArea { display: none; }
+  @media print {
+    @page { margin: 5mm; }
+    html, body { height: auto !important; overflow: visible !important; background: #fff !important; display: block !important; padding: 0 !important; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block; }
+    #printArea .pp { width: 100%; height: calc(100vh - 1px); display: flex; align-items: center; justify-content: center; overflow: hidden; break-after: page; page-break-after: always; }
+    #printArea .pp:last-child { break-after: auto; page-break-after: auto; }
+    #printArea img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+  }
+
+
+  /* ---------- Right-click menu (floats) ---------- */
+  .ctx {
+    position: fixed; z-index: 300; min-width: 200px; padding: 4px;
+    background: var(--sheet); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--float-shadow);
+  }
+  .ctx-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    width: 100%; height: 32px; padding: 0 10px; border: 0; border-radius: var(--radius-control);
+    background: transparent; color: var(--text); font-size: 14px; text-align: left; white-space: nowrap;
+  }
+  .ctx-item:hover, .ctx-item:focus { background: var(--raised); outline: none; }
+  .ctx-item.danger { color: var(--negative); }
+  .ctx-item.danger:hover, .ctx-item.danger:focus { background: var(--negative-soft); }
+  .ctx-item kbd { font: inherit; font-size: 12px; color: var(--muted); }
+  .ctx-sep { height: 1px; margin: 4px 6px; background: var(--rule); }
+  .resident { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; color: var(--text); cursor: pointer; }
+  .resident input { margin-top: 2px; }
+  .resident span { display: block; color: var(--muted); }
+
+  /* ---------- Notices: update offer, text recognition (desktop program; under the dialogs and the page preview) ---------- */
+  .notices { position: fixed; right: 20px; bottom: 20px; z-index: 90; display: flex; flex-direction: column; gap: 8px; width: 300px; }
+  .notice {
+    padding: 14px 16px;
+    background: var(--sheet); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--float-shadow);
+  }
+  .uc-title { font-size: 14px; font-weight: 600; line-height: 20px; }
+  .uc-text { margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 19px; white-space: pre-line; }
+  .uc-bar { height: 4px; margin-top: 10px; border-radius: 2px; background: var(--well); overflow: hidden; }
+  .uc-bar i { display: block; width: 0; height: 100%; background: var(--accent); transition: width 0.2s; }
+  .uc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .addon-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 8px; color: var(--text); }
+  .addon-row b { margin-left: 4px; font-weight: 400; color: var(--muted); }
+  /* Language: 中文 / English / ไทย, each written in its own language */
+  .lang-row { display: flex; align-items: center; gap: 8px; margin: 10px 0 6px; }
+  .lang-row > svg { width: 15px; height: 15px; flex: none; fill: none; stroke: var(--muted); stroke-width: 1.3; }
+  .lang-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-control); background: var(--active); }
+  .lang-seg button {
+    height: 24px; padding: 0 8px; border: 0; border-radius: var(--radius-chip);
+    background: transparent; color: var(--muted); font-size: 12px; line-height: 24px; white-space: nowrap;
+  }
+  .lang-seg button:hover { color: var(--text); }
+  .lang-seg button[aria-pressed="true"] { background: var(--sheet); color: var(--text); font-weight: 500; box-shadow: 0 0 0 1px var(--border); }
+  .ocr-lang { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
+
+  /* ---------- Touch: actions that hover reveals stay reachable ---------- */
+  @media (hover: none) {
+    .pstack .pexpand { opacity: 1; }
+    .doc-tab-x { opacity: 1; }
+    .ptile.sel .pacts, .org-doc .x { opacity: 1; }
+  }
+
+  /* ---------- Phone: the frame folds away, the sheet becomes the screen ---------- */
+  @media (max-width: 720px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .side {
+      position: fixed; top: 0; bottom: 0; left: 0; z-index: 150; width: min(300px, 86vw);
+      transform: translateX(-100%); visibility: hidden; transition: transform 0.2s ease, visibility 0.2s;
+      box-shadow: var(--float-shadow);
+    }
+    .app.nav-open .side { transform: none; visibility: visible; }
+    .app.nav-open .nav-scrim { display: block; position: fixed; inset: 0; z-index: 140; background: var(--scrim); }
+    .tab-btn { height: 44px; }
+    .menu-btn {
+      display: inline-flex; align-items: center; justify-content: center; flex: none;
+      width: 40px; height: 40px; padding: 0; border: 0; border-radius: var(--radius-control); background: transparent;
+    }
+    .menu-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--text); stroke-width: 1.5; stroke-linecap: round; }
+    .top { height: 52px; padding: 0 8px 0 4px; gap: 6px; }
+    .top .btn { height: 36px; padding: 0 10px; }
+    .screen-meta { display: none; }
+    .canvas-sheet { margin: 0; border-width: 1px 0 0; border-radius: 0; }
+    .rail { width: 84px; padding: 8px 6px; }
+    .thumb { padding: 4px; margin-bottom: 8px; }
+    .stage { padding: 12px; }
+    .stage-toolbar, .select-toolbar { padding: 8px 12px; gap: 6px; }
+    .organizer { flex-direction: column; }
+    .org-side { width: auto; max-height: 172px; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--rule); }
+    .org-tip, .org-zoom { display: none; }
+    .org-scroll { padding: 16px 16px 48px; }
+    .org-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .org-bar, .org-foot { padding: 8px 12px; }
+    .convert { flex-direction: column; gap: 16px; padding: 16px; }
+    #zoomLabel, #zoomPage, #zoomFit, .tb-sep { display: none; }
+    .viewer-layout.selecting #viewToolbar, .select-toolbar label[for="rangeInput"] { display: none !important; }
+    .select-toolbar input[type="text"] { width: 112px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="notices">
+  <div class="notice" id="ocrCard" role="status" hidden>
+    <div class="uc-title" id="ocrTitle"></div>
+    <div class="uc-text" id="ocrText"></div>
+    <div class="uc-bar" id="ocrBar" hidden><i id="ocrFill"></i></div>
+    <div class="uc-actions" id="ocrActions"></div>
+  </div>
+  <div class="notice" id="updateCard" role="status" hidden>
+    <div class="uc-title" id="ucTitle"></div>
+    <div class="uc-text" id="ucText"></div>
+    <div class="uc-bar" id="ucBar" hidden><i id="ucFill"></i></div>
+    <div class="uc-actions" id="ucActions">
+      <button class="btn small" id="ucLater">以后再说</button>
+      <button class="btn small primary" id="ucGo">立即更新</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <aside class="side" id="side">
+    <div class="brandrow">
+      <svg viewBox="0 0 28 28" aria-hidden="true"><rect x="9.75" y="2.75" width="14.5" height="18.5" rx="2" fill="none" stroke="var(--text)" stroke-width="1.5"/><path d="M3.75 7.75a2 2 0 0 1 2-2h9l4.5 4.5v13a2 2 0 0 1-2 2H5.75a2 2 0 0 1-2-2z" fill="var(--accent)"/><path d="M14.75 5.75v4.5h4.5" fill="none" stroke="var(--sheet)" stroke-width="1.5"/><path d="M7.5 15h7.5M7.5 18.5h5" fill="none" stroke="var(--sheet)" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <div><div class="pname-app">GR Acrobat</div><div class="pby">龙禹良制作</div></div>
+    </div>
+    <nav class="nav" id="tabs" aria-label="功能">
+        <button class="tab-btn active" data-mode="view"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.75h5.5l2.75 2.75v9.75H4z"/><path d="M9.5 1.75V4.5h2.75M6.25 8h3.5M6.25 10.75h3.5"/></svg>查看</button>
+        <button class="tab-btn" data-mode="convert"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5.25h10M10 2.75l2.5 2.5L10 7.75M13.5 10.75h-10M6 8.25l-2.5 2.5L6 13.25"/></svg>转换</button>
+        <button class="tab-btn" data-mode="merge"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.75h6.5a.75.75 0 0 1 .75.75v8.75"/><rect x="2.75" y="4.25" width="8" height="10" rx="1"/></svg>合并拆分</button>
+        <button class="tab-btn" data-mode="ocr" id="ocrTab" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5.25V3a1 1 0 0 1 1-1h2.25M10.75 2H13a1 1 0 0 1 1 1v2.25M14 10.75V13a1 1 0 0 1-1 1h-2.25M5.25 14H3a1 1 0 0 1-1-1v-2.25"/><path d="M5 6h6M5 8.5h6M5 11h3.5"/></svg>文字识别</button>
+    </nav>
+    <div class="side-foot">
+      <label class="resident" id="residentRow" hidden><input type="checkbox" id="residentToggle"><span><b style="font-weight:500;color:var(--text)">开机后台预加载</b>旧电脑、机械硬盘打开更快</span></label>
+      <div class="addon-row" id="ocrRow" hidden><span>文字识别<b id="ocrState"></b></span><button class="btn ghost small" id="ocrToggle"></button></div>
+      Ctrl+O 打开文件<br>Ctrl+P 打印
+      <div class="lang-row" role="group" aria-label="语言">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25"/><path d="M1.75 8h12.5M8 1.75c-1.9 2-2.75 4-2.75 6.25S6.1 12.25 8 14.25M8 1.75c1.9 2 2.75 4 2.75 6.25S9.9 12.25 8 14.25"/></svg>
+        <span class="lang-seg" data-no-i18n><button data-lang="zh">中文</button><button data-lang="en">English</button><button data-lang="th">ไทย</button></span>
+      </div>
+      <div id="appVersion"></div>
+    </div>
+  </aside>
+  <div class="main-col">
+    <header class="top">
+      <button class="menu-btn" id="menuBtn" aria-label="打开菜单"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14"/></svg></button>
+      <h1 class="screen-title" id="screenTitle">查看</h1>
+      <span class="screen-meta" id="screenMeta"></span>
+      <span class="spacer"></span>
+      <button class="btn primary print-btn" id="printBtn" disabled title="打印（Ctrl+P）"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7V3.5a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 .75.75V7"/><path d="M5 15H4a1.75 1.75 0 0 1-1.75-1.75v-4.5C2.25 7.78 3.03 7 4 7h12c.97 0 1.75.78 1.75 1.75v4.5c0 .97-.78 1.75-1.75 1.75h-1"/><rect x="5" y="11.5" width="10" height="6" rx=".75"/></svg>打印</button>
+      <input type="file" id="openInput" accept="application/pdf,.pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp" multiple>
+    </header>
+    <main class="canvas-sheet" id="main">
+
+  <!-- Viewer and text recognition share it -->
+  <div class="viewer-layout" id="viewerLayout">
+    <div class="doc-tabs" id="docTabs" role="tablist" aria-label="打开的文档" hidden></div>
+    <div class="viewer-body">
+    <div class="rail" id="rail">
+    </div>
+    <div class="stage-col">
+      <div class="select-toolbar" id="selectToolbar" style="display:none">
+        <button class="btn small" id="selAll">全选</button>
+        <button class="btn small" id="selNone">清除</button>
+        <button class="btn small" id="selInvert">反选</button>
+        <label for="rangeInput">页码范围</label>
+        <input type="text" id="rangeInput" placeholder="如 1-3,5,8">
+        <button class="btn small" id="rangeApply">应用</button>
+        <span class="spacer" style="flex:1"></span>
+        <span class="count-pill" id="selCount">已选 0 页</span>
+        <span id="actionSlot"></span>
+      </div>
+      <div class="stage-toolbar" id="viewToolbar">
+        <div class="pagejump">
+          <button class="btn icon small" id="prevPage" title="上一页">‹</button>
+          <input type="text" id="pageNumInput" value="1">
+          <span class="nudge">/ <span id="pageTotal">0</span></span>
+          <button class="btn icon small" id="nextPage" title="下一页">›</button>
+        </div>
+        <span class="tb-sep"></span>
+        <div class="zoomgroup">
+          <button class="btn icon small" id="zoomOut" title="缩小">－</button>
+          <button class="btn small" id="zoomPage">适合页面</button>
+          <button class="btn small" id="zoomFit">适合宽度</button>
+          <button class="btn icon small" id="zoomIn" title="放大">＋</button>
+        </div>
+        <span class="nudge" id="zoomLabel"></span>
+      </div>
+      <div class="stage" id="stage">
+        <div class="stage-empty" id="stageEmpty">
+          <div class="empty-title">还没有打开文件</div>
+          <div class="hint">把 PDF 或图片拖进窗口，或者从电脑里选择</div>
+          <button class="btn" id="emptyOpen">打开文件</button>
+        </div>
+        <div class="page-wrap" id="pageWrap" style="display:none"><canvas id="pageCanvas"></canvas></div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- Merge / organize pages -->
+  <div class="organizer" id="mergeView" style="display:none">
+    <aside class="org-side" id="orgSide">
+      <div class="org-side-head">
+        <h2>文档</h2>
+        <button class="btn small" id="orgAddBtn">添加文件</button>
+      </div>
+      <input type="file" id="orgInput" accept="application/pdf,.pdf" multiple>
+      <button class="btn small ghost" id="orgAddCurrent" hidden>添加正在查看的文件</button>
+      <div class="org-docs" id="orgDocs"></div>
+      <div class="org-split-zone" id="orgSplitZone"><b>放到这里，拆分成新文档</b><span>保存在原文档所在的文件夹</span></div>
+      <div class="org-tip">Ctrl 或 Shift 点选多页<br>选中的页面拖到这一栏，拆分成新文档<br>Delete 删除所选，Ctrl+Z 撤销<br>双击页面放大查看</div>
+    </aside>
+    <section class="org-main">
+      <div class="org-bar">
+        <button class="btn small" id="orgUndo" disabled title="Ctrl+Z">撤销</button>
+        <span class="org-sep"></span>
+        <button class="btn small" id="orgExpandAll" disabled>全部展开</button>
+        <button class="btn small" id="orgCollapseAll" disabled>全部收起</button>
+        <span class="org-sep"></span>
+        <button class="btn small" id="orgSelAll" disabled>全选</button>
+        <button class="btn small" id="orgRotL" disabled>向左旋转</button>
+        <button class="btn small" id="orgRotR" disabled>向右旋转</button>
+        <button class="btn small danger" id="orgDel" disabled>删除所选</button>
+        <span class="count-pill" id="orgSelCount" hidden></span>
+        <span class="spacer"></span>
+        <label class="org-zoom">缩略图 <input type="range" id="orgZoom" min="96" max="240" value="150"></label>
+      </div>
+      <div class="org-scroll" id="orgScroll">
+        <div class="org-grid" id="orgGrid"></div>
+        <div class="org-empty" id="orgEmpty">
+          <div class="big">把 PDF 拖到这里</div>
+          <div>每份文档先叠成一摞，展开后可以删除、旋转、拖动单页，再合并成一个文件；<br>
+          选中页面拖到左边的文档栏，就拆分成一份新文档<br>
+          也可以 <button class="linkbtn" id="orgEmptyPick">选择文件</button></div>
+        </div>
+        <div class="org-marker" id="orgMarker"></div>
+      </div>
+      <div class="org-foot">
+        <span class="org-total" id="orgTotal">0 页</span>
+        <span class="progress-line" id="orgStatus"></span>
+        <label class="org-name-l">文件名 <input type="text" id="orgName" value="合并结果"></label>
+        <button class="btn" id="orgExportSel" disabled>仅导出所选</button>
+        <button class="btn primary" id="orgExport" disabled>合并并下载</button>
+      </div>
+    </section>
+    <div class="org-ghost" id="orgGhost"></div>
+    <div class="pv" id="orgPreview" hidden>
+      <div class="pv-bar">
+        <span id="pvLabel"></span>
+        <span class="spacer"></span>
+        <button class="btn small" id="pvRotL">向左旋转</button>
+        <button class="btn small" id="pvRotR">向右旋转</button>
+        <button class="btn small danger" id="pvDel">删除此页</button>
+        <button class="btn small" id="pvClose">关闭</button>
+      </div>
+      <div class="pv-stage" id="pvStage">
+        <button class="pv-nav l" id="pvPrev" title="上一页">‹</button>
+        <canvas id="pvCanvas"></canvas>
+        <button class="pv-nav r" id="pvNext" title="下一页">›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 转换: pictures to a PDF (left), a PDF to pictures (right) -->
+  <div class="convert" id="convertView" style="display:none">
+    <div class="cv-zone" id="cvImgZone" role="button" tabindex="0">
+      <svg class="cv-icon" viewBox="0 0 56 48" aria-hidden="true"><rect x="3" y="14" width="20" height="16" rx="2"/><circle cx="9" cy="20" r="2"/><path d="M4 28l6-5 4 3 4-3 5 4"/><path d="M26 22h7M30 19l3 3-3 3"/><path d="M37 11h9l6 6v20H37z"/><path d="M46 11v6h6M40 23h9M40 27h9M40 31h6"/></svg>
+      <div class="cv-title">图片转 PDF</div>
+      <div>把图片拖到这里，或点击选择</div>
+      <div>JPG、PNG、GIF、BMP、WebP，按文件名顺序每张一页</div>
+      <label class="cv-opt">页面大小
+        <select id="pageSizeSel">
+          <option value="auto">贴合图片尺寸</option>
+          <option value="a4p">A4 竖向（图片居中缩放）</option>
+          <option value="a4l">A4 横向（图片居中缩放）</option>
+        </select>
+      </label>
+      <div class="cv-status" id="cvImgStatus"></div>
+    </div>
+    <div class="cv-zone" id="cvPdfZone" role="button" tabindex="0">
+      <svg class="cv-icon" viewBox="0 0 56 48" aria-hidden="true"><path d="M4 11h9l6 6v20H4z"/><path d="M13 11v6h6M7 23h9M7 27h9M7 31h6"/><path d="M23 22h7M27 19l3 3-3 3"/><rect x="33" y="14" width="20" height="16" rx="2"/><circle cx="39" cy="20" r="2"/><path d="M34 28l6-5 4 3 4-3 5 4"/></svg>
+      <div class="cv-title">PDF 转图片</div>
+      <div>把 PDF 拖到这里，或点击选择</div>
+      <div>每页直接存成一张图片（PNG 或 JPEG）</div>
+      <div class="cv-status" id="cvPdfStatus"></div>
+    </div>
+    <input type="file" id="cvImgInput" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp" multiple>
+    <input type="file" id="cvPdfInput" accept="application/pdf,.pdf" multiple>
+  </div>
+
+    </main>
+  </div>
+  <div class="nav-scrim" id="navScrim"></div>
+</div>
+
+<div class="pd-back" id="printDlg" hidden>
+  <div class="pd" role="dialog" aria-modal="true" aria-labelledby="pdTitle">
+    <div class="pd-title" id="pdTitle">打印</div>
+    <div class="pd-file" id="pdFile"></div>
+    <div class="pd-group">
+      <div class="pd-label">打印范围</div>
+      <label><input type="radio" name="pdRange" value="all" checked> 全部<span id="pdAllCount"></span></label>
+      <label><input type="radio" name="pdRange" value="second"> <span id="pdSecond"></span></label>
+      <label><input type="radio" name="pdRange" value="custom"> 自定义 <input type="text" id="pdCustom" placeholder="如 1-3,5,8"></label>
+    </div>
+    <div class="pd-group">
+      <div class="pd-label">清晰度</div>
+      <select id="pdQuality">
+        <option value="150">标准 150 dpi（文件大时更快）</option>
+        <option value="200" selected>清晰 200 dpi</option>
+        <option value="300">高清 300 dpi（小字、图纸）</option>
+      </select>
+      <label><input type="checkbox" id="pdAutoRot" checked> 横向页面自动旋转，铺满纸张</label>
+    </div>
+    <div class="pd-note">打印机、纸张大小、份数和双面打印，在下一步的系统打印窗口里选择。</div>
+    <div class="pd-progress" id="pdProgress"></div>
+    <div class="pd-actions">
+      <button class="btn" id="pdCancel">取消</button>
+      <button class="btn primary" id="pdGo">打印</button>
+    </div>
+  </div>
+</div>
+<div class="pd-back" id="cvDlg" hidden>
+  <div class="pd" role="dialog" aria-modal="true" aria-labelledby="cvTitle">
+    <div class="pd-title" id="cvTitle">PDF 转图片</div>
+    <div class="pd-file" id="cvFile"></div>
+    <div class="pd-group">
+      <div class="pd-label">图片格式</div>
+      <select id="cvFormat">
+        <option value="png">PNG（文字、线条清楚）</option>
+        <option value="jpeg">JPEG（照片多时文件小）</option>
+      </select>
+    </div>
+    <div class="pd-group">
+      <div class="pd-label">清晰度</div>
+      <select id="cvScale">
+        <option value="1">1x（和页面一样大）</option>
+        <option value="2" selected>2x（推荐）</option>
+        <option value="3">3x</option>
+        <option value="4">4x（最清楚，文件大）</option>
+      </select>
+    </div>
+    <div class="pd-group">
+      <div class="pd-label">页面</div>
+      <label><input type="radio" name="cvRange" value="all" checked> 全部<span id="cvAllCount"></span></label>
+      <label><input type="radio" name="cvRange" value="custom"> 自定义 <input type="text" id="cvCustom" placeholder="如 1-3,5,8"></label>
+    </div>
+    <div class="pd-group" id="cvDirGroup">
+      <div class="pd-label">保存位置</div>
+      <div class="cv-dir"><span id="cvDir"></span><button class="btn small" id="cvDirPick">更改…</button></div>
+      <div class="pd-note" id="cvNote"></div>
+    </div>
+    <div class="pd-progress" id="cvProgress"></div>
+    <div class="pd-actions">
+      <button class="btn" id="cvCancel">取消</button>
+      <button class="btn primary" id="cvGo">开始转换</button>
+    </div>
+  </div>
+</div>
+<div class="pd-back" id="pwDlg" hidden>
+  <form class="pd" id="pwForm" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <div class="pd-title" id="pwTitle">这个 PDF 有密码保护</div>
+    <div class="pd-file" id="pwFile"></div>
+    <input type="password" class="pw-input" id="pwInput" placeholder="输入打开密码" autocomplete="off" spellcheck="false" aria-label="密码">
+    <div class="pd-progress pw-msg" id="pwMsg"></div>
+    <div class="pd-actions">
+      <button type="button" class="btn" id="pwCancel">取消</button>
+      <button type="submit" class="btn primary">打开</button>
+    </div>
+  </form>
+</div>
+<div class="pd-back" id="askDlg" hidden>
+  <div class="pd" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
+    <div class="pd-title" id="askTitle"></div>
+    <div class="pd-note msg-text" id="askText"></div>
+    <div class="pd-actions" id="askActions"></div>
+  </div>
+</div>
+<div class="pd-back" id="msgDlg" hidden>
+  <div class="pd" role="alertdialog" aria-modal="true" aria-labelledby="msgTitle" aria-describedby="msgText">
+    <div class="pd-title" id="msgTitle"></div>
+    <div class="pd-note msg-text" id="msgText"></div>
+    <div class="pd-actions"><button class="btn primary" id="msgOk">知道了</button></div>
+  </div>
+</div>
+<div id="printArea"></div>
+
+<script>
+translateMarkup();                                  // i18n.js: the markup in the chosen language, before it shows
+pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdf.worker.min.js";
+// Start the PDF parser thread now, while the window is still appearing.
+try { pdfjsLib.GlobalWorkerOptions.workerPort = new Worker('vendor/pdf.worker.min.js'); } catch (err) { /* pdf.js falls back to its own loader */ }
+
+// pdf-lib only writes files. It loads on first use, or in idle time after the first page,
+// so opening a PDF never waits for it.
+const LIB_URLS = { pdflib: 'vendor/pdf-lib.min.js' };
+let PDFDocument = null, degrees = null, libsPromise = null;
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error(t('无法加载组件')));
+    document.head.appendChild(s);
+  });
+}
+function ensureLibs() {
+  if (!libsPromise) {
+    libsPromise = loadScript(LIB_URLS.pdflib)
+      .then(() => { ({ PDFDocument, degrees } = PDFLib); })
+      .catch((err) => { libsPromise = null; throw err; });
+  }
+  return libsPromise;
+}
+function preloadLibsWhenIdle() {
+  (window.requestIdleCallback || ((fn) => setTimeout(fn, 1500)))(() => ensureLibs().catch(() => {}), { timeout: 4000 });
+}
+const perfMark = (label) => { if (window.electronAPI && window.electronAPI.perf) window.electronAPI.perf(label); };
+
+/* ---------------- State ---------------- */
+const state = {
+  mode: 'view',
+  // pdfDoc … numPages, and the page, zoom and selection below: the document in the front tab (each open
+  // document keeps its own copy of them in docs, see 打开的文档)
+  pdfDoc: null,        // pdfjs document proxy (viewer source), or a picture that answers like one (imageDoc)
+  password: '',        // its password, if it has one: saving pages from it needs it again
+  fileName: '',
+  filePath: null,      // where it is on disk, when known: pages split off it are saved beside it
+  numPages: 0,
+  currentPage: 1,
+  scale: 1,
+  fitScale: 1,
+  renderTask: null,
+  thumbObserver: null,
+  selected: new Set(),
+  fitMode: 'page',  // open documents whole; 适合宽度 switches to width
+};
+
+const MODE_NAMES = { view: '查看', convert: '转换', merge: '合并拆分', ocr: '文字识别' };
+// Screens that show the open PDF, and those of them where pages are picked with check boxes.
+const isPdfScreen = (m) => m === 'view' || m === 'ocr';
+const isSelectScreen = (m) => m === 'ocr';
+// The top bar's h1 names the object being worked on: the open file, or the screen itself.
+function updateTitle() {
+  const pdfMode = isPdfScreen(state.mode);
+  const withFile = pdfMode && state.pdfDoc;
+  $('#screenTitle').textContent = withFile ? state.fileName : t(MODE_NAMES[state.mode]);
+  const pic = withFile && state.pdfDoc.isImage;
+  $('#screenMeta').textContent = pic ? `${state.pdfDoc.width} × ${state.pdfDoc.height}` : withFile ? t('共 {n} 页', { n: state.numPages }) : '';
+  document.title = withFile ? `${state.fileName} - GR Acrobat` : 'GR Acrobat';
+  // Page tools appear once there is a page; the selection bar only on the screens that select.
+  const selecting = isSelectScreen(state.mode) && !!state.pdfDoc;
+  $('#rail').hidden = !state.pdfDoc || (pic && !selecting);   // a picture is one page: no page list to view it
+  $('#viewToolbar').hidden = !state.pdfDoc;
+  $('#selectToolbar').style.display = selecting ? 'flex' : 'none';
+}
+
+/* ---------------- Helpers ---------------- */
+const $ = (sel) => document.querySelector(sel);
+const fmtSize = (bytes) => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(2) + ' MB';
+};
+const parseRanges = (str, max) => {
+  const out = new Set();
+  str.split(',').forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    const m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (m) {
+      let a = parseInt(m[1],10), b = parseInt(m[2],10);
+      if (a > b) [a,b] = [b,a];
+      for (let i=a;i<=b;i++) if (i>=1 && i<=max) out.add(i);
+    } else if (/^\d+$/.test(part)) {
+      const n = parseInt(part,10);
+      if (n>=1 && n<=max) out.add(n);
+    }
+  });
+  return out;
+};
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 400);
+}
+const isImageName = (name) => /\.(jpe?g|png|gif|bmp|webp|tiff?)$/i.test(name);
+function baseName(name) {
+  return name.replace(/\.(pdf|jpe?g|png|gif|bmp|webp|tiff?)$/i, '');
+}
+
+// Phone menu and the empty-state action
+$('#menuBtn').addEventListener('click', () => $('#app').classList.toggle('nav-open'));
+$('#navScrim').addEventListener('click', () => $('#app').classList.remove('nav-open'));
+$('#emptyOpen').addEventListener('click', () => $('#openInput').click());
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#app').classList.remove('nav-open'); });
+
+/* ---------------- Tabs / mode switching ---------------- */
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  setMode(btn.dataset.mode);
+});
+function setMode(mode) {
+  state.mode = mode;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  const isPdfMode = isPdfScreen(mode);
+  $('#viewerLayout').style.display = isPdfMode ? 'flex' : 'none';
+  $('#mergeView').style.display = mode === 'merge' ? 'flex' : 'none';
+  $('#convertView').style.display = mode === 'convert' ? 'flex' : 'none';
+
+  const showSelect = isSelectScreen(mode);
+  $('#viewerLayout').classList.toggle('selecting', showSelect);
+  renderSelectActionSlot();
+  renderThumbStates();
+  updateSelCount();
+  if (mode === 'merge') orgOnShow();
+  updatePrintBtn();
+  updateTitle();
+  $('#app').classList.remove('nav-open');
+  // The toolbars above the page differ per screen, so the page is fitted again.
+  if (isPdfMode && state.pdfDoc) return renderMainPage(state.currentPage, true);
+}
+
+/* ---------------- Opening a PDF or a picture ---------------- */
+// Each file opens in a tab of its own; a file that is already open comes to the front instead.
+$('#openInput').addEventListener('change', (e) => {
+  openFiles([...e.target.files]);
+  e.target.value = '';
+});
+// drag & drop onto the whole app for quick open
+['dragover','drop'].forEach(evt => document.body.addEventListener(evt, (e) => {
+  if (isPdfScreen(state.mode) || state.mode === 'convert') e.preventDefault();
+}));
+const openable = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name) || isImageName(f.name);
+document.body.addEventListener('drop', (e) => {
+  if (!isPdfScreen(state.mode)) return;
+  const files = [...(e.dataTransfer.files || [])].filter(openable);
+  if (files.length) { e.preventDefault(); openFiles(files); }
+});
+
+async function openFiles(files) {
+  for (const f of files) await openFile(f);
+}
+async function openFile(file) {
+  const path = pathOf(file);
+  const open = path && docAt(path);
+  if (open) return showDoc(open, 'view');
+  if (isImageName(file.name)) return openImage(file, file.name, path);
+  await openPdfSource({ data: await file.arrayBuffer() }, file.name, path);
+}
+// Where a file the person picked or dropped is on disk (desktop program only).
+const pathOf = (file) => { try { return (window.electronAPI && window.electronAPI.pathOf(file)) || null; } catch { return null; } };
+
+// Loads a PDF with pdf.js. A password-protected one asks for its password (again after a wrong one).
+// result: { doc, password }, or null when the password dialog is cancelled. pw.value holds what was typed.
+function loadPdf(params, name, pw = { value: params.password || '' }) {
+  const task = pdfjsLib.getDocument(params);
+  let cancelled = false;
+  task.onPassword = (update, reason) => {
+    askPassword(name, reason === pdfjsLib.PasswordResponses.INCORRECT_PASSWORD).then((typed) => {
+      if (typed === null) { cancelled = true; task.destroy(); return; }
+      pw.value = typed;
+      update(typed);
+    });
+  };
+  const result = task.promise.then((doc) => ({ doc, password: pw.value }), (err) => { if (cancelled) return null; throw err; });
+  return { task, result };
+}
+let pwQueue = Promise.resolve(), pwDone = null;      // one password dialog at a time
+function askPassword(name, wrong) {
+  const ask = () => new Promise((resolve) => {
+    $('#pwFile').textContent = name;
+    $('#pwMsg').textContent = wrong ? t('密码不对，请重新输入。') : '';
+    $('#pwInput').value = '';
+    $('#pwDlg').hidden = false;
+    $('#pwInput').focus();
+    pwDone = (value) => { pwDone = null; $('#pwDlg').hidden = true; resolve(value); };
+  });
+  return (pwQueue = pwQueue.then(ask));
+}
+$('#pwForm').addEventListener('submit', (e) => { e.preventDefault(); if (pwDone) pwDone($('#pwInput').value); });
+$('#pwCancel').addEventListener('click', () => { if (pwDone) pwDone(null); });
+
+function showMessage(title, text) {
+  $('#msgTitle').textContent = title;
+  $('#msgText').textContent = text;
+  $('#msgDlg').hidden = false;
+  $('#msgOk').focus();
+}
+$('#msgOk').addEventListener('click', () => { $('#msgDlg').hidden = true; });
+// A question with a few answers: [{ label, value, primary?, danger?, cancel? }] → the chosen value.
+// Esc gives the answer marked cancel; the primary one has the focus.
+let askDone = null, askCancel = null;
+function askChoice(title, text, answers) {
+  return new Promise((resolve) => {
+    $('#askTitle').textContent = title;
+    $('#askText').textContent = text;
+    const box = $('#askActions');
+    box.innerHTML = '';
+    for (const a of answers) {
+      const b = document.createElement('button');
+      b.className = 'btn' + (a.primary ? ' primary' : '') + (a.danger ? ' danger' : '');
+      b.textContent = a.label;
+      b.addEventListener('click', () => askDone(a.value));
+      box.appendChild(b);
+    }
+    askCancel = (answers.find((a) => a.cancel) || answers[0]).value;
+    askDone = (value) => { askDone = null; $('#askDlg').hidden = true; resolve(value); };
+    $('#askDlg').hidden = false;
+    (box.querySelector('.primary') || box.firstChild).focus();
+  });
+}
+const errorText = (err) => String((err && err.message) || err);
+
+// pdf-lib reads only unprotected PDFs. Pages are saved from a protected one (opened with its password, or one
+// that only limits printing and copying) through an unprotected copy the main process makes; it stays in memory.
+const plainCopies = new WeakMap();
+async function plainBytes(doc, password) {
+  if (!(await doc.getMetadata()).info.EncryptFilterName) return doc.getData();
+  if (!plainCopies.has(doc)) {
+    if (!window.electronAPI) throw new Error(t('这个 PDF 有密码保护，网页版不能导出它的页面。'));
+    const copy = doc.getData().then((bytes) => window.electronAPI.unlockPdf(bytes, password))
+      .then((r) => { if (r.error) throw new Error(r.error); return r.bytes; });
+    copy.catch(() => plainCopies.delete(doc));
+    plainCopies.set(doc, copy);
+  }
+  return plainCopies.get(doc);
+}
+
+async function openPdfSource(params, name, path = null) {
+  let opened = params.doc ? params : null;
+  if (!opened) {
+    try {
+      opened = await loadPdf(params, name).result;
+    } catch (err) {
+      showMessage(t('无法打开'), t('「{name}」已损坏或不是 PDF。', { name }));
+      return;
+    }
+    if (!opened) return;                                   // the password was not given
+  }
+  const { doc, password = '' } = opened;
+  const open = path && docAt(path);                        // opened meanwhile, by another launch
+  if (open) { doc.destroy(); return showDoc(open, 'view'); }
+  await addDoc({ doc, password, fileName: name, filePath: path });
+  perfMark('first page shown');
+  preloadLibsWhenIdle();
+}
+
+/* ---------------- Open documents (tabs) ---------------- */
+// Every file opened stays open in its own tab above the page until it is closed (its ×, a middle click, Ctrl+W
+// or the tab's right-click menu). state shows the front tab; the others keep their page, zoom and selection here.
+const docs = [];                                    // { id, doc, password, fileName, filePath, …VIEW_FIELDS }
+let activeDocId = 0, docCounter = 0;
+const VIEW_FIELDS = ['currentPage', 'scale', 'fitScale', 'fitMode', 'selected'];
+const activeDoc = () => docs.find((d) => d.id === activeDocId) || null;
+// Windows ignores case in file names: C:\A.pdf and c:\a.PDF are the same file.
+const samePath = (a, b) => (/^win/i.test(navigator.platform) ? a.toLowerCase() === b.toLowerCase() : a === b);
+const docAt = (path) => docs.find((d) => d.filePath && samePath(d.filePath, path)) || null;
+function stashActive() {
+  const d = activeDoc();
+  if (!d) return;
+  for (const k of VIEW_FIELDS) d[k] = state[k];
+  d.fitted = state.scale === state.fitScale;          // a fitted page is fitted again (the window may be resized)
+  d.scroll = [stageEl.scrollLeft, stageEl.scrollTop];
+}
+function addDoc(o) {
+  const d = { id: ++docCounter, currentPage: 1, scale: 1, fitScale: 0, fitMode: 'page', selected: new Set(), fitted: true, ...o };
+  docs.push(d);
+  return showDoc(d, 'view');
+}
+// Brings a document to the front. screen: switches to it (a file opened is shown in 查看); without it the
+// screen stays and the document comes back as it was left.
+async function showDoc(d, screen) {
+  const switching = d.id !== activeDocId;
+  if (switching) {
+    stashActive();
+    activeDocId = d.id;
+    Object.assign(state, { pdfDoc: d.doc, password: d.password, fileName: d.fileName, filePath: d.filePath, numPages: d.doc.numPages });
+    for (const k of VIEW_FIELDS) state[k] = d[k];
+  }
+  $('#pageTotal').textContent = d.doc.numPages;
+  $('#stageEmpty').style.display = 'none';
+  $('#pageWrap').style.display = '';
+  renderTabs();
+  if (switching) { buildThumbRail(); updateSelCount(); }
+  if (screen) return setMode(screen);                 // setMode fits the page
+  updateTitle();
+  updatePrintBtn();
+  if (!isPdfScreen(state.mode)) return;
+  await renderMainPage(state.currentPage, d.fitted);
+  if (!d.fitted && d.scroll && d.id === activeDocId) [stageEl.scrollLeft, stageEl.scrollTop] = d.scroll;
+}
+async function closeDoc(d) {
+  const i = docs.indexOf(d);
+  if (i < 0) return;
+  if (ocrJob && ocrJob.doc === d.doc) ocrJob.stop();
+  docs.splice(i, 1);
+  if (d.id === activeDocId) {
+    activeDocId = 0;
+    const next = docs[i] || docs[i - 1];
+    if (next) await showDoc(next); else showNoDoc();
+  } else {
+    renderTabs();
+  }
+  d.doc.destroy();
+}
+// The others first, so the front one is not replaced by each of them in turn.
+async function closeDocs(list) {
+  const front = activeDoc();
+  for (const d of list) if (d !== front) await closeDoc(d);
+  if (front && list.includes(front)) await closeDoc(front);
+}
+function showNoDoc() {
+  if (state.renderTask) { try { state.renderTask.cancel(); } catch (e) {} }
+  Object.assign(state, { pdfDoc: null, password: '', fileName: '', filePath: null, numPages: 0, currentPage: 1, selected: new Set() });
+  if (state.thumbObserver) state.thumbObserver.disconnect();
+  $('#rail').querySelectorAll('.thumb').forEach((n) => n.remove());
+  const blank = document.createElement('canvas');     // lets the last page's drawing go
+  blank.id = 'pageCanvas';
+  $('#pageCanvas').replaceWith(blank);
+  $('#pageWrap').style.display = 'none';
+  $('#stageEmpty').style.display = '';
+  $('#pageTotal').textContent = 0;
+  $('#zoomLabel').textContent = '';
+  renderTabs();
+  updateTitle();
+  updatePrintBtn();
+  updateSelCount();
+}
+function renderTabs() {
+  const bar = $('#docTabs');
+  bar.hidden = !docs.length;
+  const close = t('关闭'), add = t('打开文件（Ctrl+O）');
+  bar.innerHTML = docs.map((d) => {
+    const on = d.id === activeDocId;
+    return `<div class="doc-tab${on ? ' active' : ''}" data-doc="${d.id}" title="${escapeHtml(d.filePath || d.fileName)}">` +
+      `<button class="doc-tab-name" role="tab" aria-selected="${on}">${escapeHtml(d.fileName)}</button>` +
+      `<button class="doc-tab-x" title="${close}" aria-label="${close}"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></button></div>`;
+  }).join('') +
+    `<button class="doc-tab-add" title="${add}" aria-label="${add}"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M1 6h10"/></svg></button>`;
+  const front = bar.querySelector('.doc-tab.active');
+  if (front) front.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+const tabDoc = (el) => { const tab = el.closest('.doc-tab'); return tab ? docs.find((d) => d.id === +tab.dataset.doc) : null; };
+$('#docTabs').addEventListener('click', (e) => {
+  if (e.target.closest('.doc-tab-add')) { $('#openInput').click(); return; }
+  const d = tabDoc(e.target);
+  if (!d) return;
+  if (e.target.closest('.doc-tab-x')) closeDoc(d);
+  else if (d.id !== activeDocId) showDoc(d);
+});
+$('#docTabs').addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });   // no scrolling cursor
+$('#docTabs').addEventListener('auxclick', (e) => {
+  const d = e.button === 1 && tabDoc(e.target);
+  if (d) closeDoc(d);
+});
+// Ctrl+W closes the front document, Ctrl+Tab / Ctrl+Shift+Tab go to the next / previous one.
+document.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || !docs.length || !isPdfScreen(state.mode) || !$('#printDlg').hidden) return;
+  if (e.key.toLowerCase() === 'w') {
+    e.preventDefault();
+    const d = activeDoc();
+    if (d) closeDoc(d);
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    const i = docs.indexOf(activeDoc());
+    if (docs.length > 1) showDoc(docs[(i + (e.shiftKey ? docs.length - 1 : 1)) % docs.length]);
+  }
+});
+// 合并拆分 rewrote a file that is open in a tab: the tab shows the file as it now is.
+async function reloadDocFile(path, bytes) {
+  const d = docAt(path);
+  if (!d) return;
+  const { doc } = await loadPdf({ data: bytes }, d.fileName).result;
+  if (!docs.includes(d)) { doc.destroy(); return; }
+  const front = d.id === activeDocId;
+  if (front) { stashActive(); activeDocId = 0; }
+  const old = d.doc;
+  Object.assign(d, { doc, password: '', selected: new Set(), currentPage: Math.min(d.currentPage, doc.numPages) });
+  if (front) await showDoc(d); else renderTabs();
+  old.destroy();
+}
+
+/* ---------------- Pictures ---------------- */
+// A picture opens like a one-page PDF: imageDoc answers the calls the viewer, printing, 转换 and text
+// recognition make of a pdf.js document. Its page is the picture at 96 dpi (a pixel is 0.75 pt), the size
+// Windows shows it at 100%. getData() makes a real one-page PDF of it, for 合并拆分, only when asked.
+async function imageDoc(blob) {
+  const bmp = await createImageBitmap(blob);
+  const w = bmp.width * 0.75, h = bmp.height * 0.75;
+  const page = {
+    view: [0, 0, w, h],
+    rotate: 0,
+    getViewport({ scale = 1, rotation = 0 } = {}) {
+      const turned = rotation % 180 !== 0;
+      return { width: (turned ? h : w) * scale, height: (turned ? w : h) * scale, scale, rotation };
+    },
+    render({ canvasContext: ctx, viewport }) {
+      let cancelled = false;
+      const promise = new Promise((resolve, reject) => setTimeout(() => {   // later, as pdf.js does: a cancel can come first
+        if (cancelled) { reject(new Error('cancelled')); return; }
+        const dw = w * viewport.scale, dh = h * viewport.scale;
+        ctx.save();
+        ctx.translate(viewport.width / 2, viewport.height / 2);
+        ctx.rotate(viewport.rotation * Math.PI / 180);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(bmp, -dw / 2, -dh / 2, dw, dh);
+        ctx.restore();
+        resolve();
+      }));
+      return { promise, cancel() { cancelled = true; } };
+    },
+  };
+  let pdf = null;
+  return {
+    isImage: true,
+    numPages: 1,
+    width: bmp.width,
+    height: bmp.height,
+    // Drawn at most at its own pixels (more only blurs it), and at most 40 megapixels.
+    maxScale: Math.min(1 / 0.75, Math.sqrt(40e6 / (w * h))),
+    getPage: async () => page,
+    getMetadata: async () => ({ info: {} }),
+    getData() {
+      if (!pdf) { pdf = imagePdf(bmp, w, h, blob); pdf.catch(() => { pdf = null; }); }
+      return pdf.then((bytes) => bytes.slice());      // pdf.js takes over the bytes it is given
+    },
+    destroy() { bmp.close(); },
+  };
+}
+// The picture as a PDF page of its size. A photo (JPEG) stays a JPEG, other pictures become PNG: sharp edges
+// and transparency are kept.
+async function imagePdf(bmp, w, h, blob) {
+  await ensureLibs();
+  const out = await PDFDocument.create();
+  const img = await embedPicture(out, bmp, blob);
+  out.addPage([w, h]).drawImage(img, { x: 0, y: 0, width: w, height: h });
+  return out.save();
+}
+// A picture in a pdf-lib document, drawn once on a canvas (which also turns it the way the camera held it).
+async function embedPicture(out, bmp, blob) {
+  const head = new Uint8Array(await blob.slice(0, 3).arrayBuffer());
+  const photo = head[0] === 0xFF && head[1] === 0xD8 && head[2] === 0xFF;
+  const c = document.createElement('canvas');
+  c.width = bmp.width;
+  c.height = bmp.height;
+  c.getContext('2d').drawImage(bmp, 0, 0);
+  const pic = await new Promise((res) => c.toBlob(res, photo ? 'image/jpeg' : 'image/png', 0.92));
+  c.width = c.height = 0;
+  const bytes = new Uint8Array(await pic.arrayBuffer());
+  return photo ? out.embedJpg(bytes) : out.embedPng(bytes);
+}
+async function openImage(blob, name, path = null) {
+  let doc;
+  try {
+    doc = await imageDoc(blob);
+  } catch (err) {
+    showMessage(t('无法打开'), t('「{name}」无法显示：图片可能已损坏，或者是不支持的格式。', { name }));
+    return;
+  }
+  const open = path && docAt(path);
+  if (open) { doc.destroy(); return showDoc(open, 'view'); }
+  await addDoc({ doc, password: '', fileName: name, filePath: path });
+  perfMark('first page shown');
+  preloadLibsWhenIdle();
+}
+
+/* ---------------- Main stage rendering ---------------- */
+// land: 'top' or 'bottom' shows that end of the new page (turning pages with the wheel or arrow keys).
+// keep: the page on screen stays until the new drawing is done (zooming), instead of a blank page.
+async function renderMainPage(num, fit, { land, keep } = {}) {
+  const doc = state.pdfDoc;
+  if (!doc) return;
+  num = Math.min(Math.max(1, num), state.numPages);
+  state.currentPage = num;
+  $('#pageNumInput').value = num;
+
+  let page;
+  try { page = await doc.getPage(num); } catch (err) { if (doc !== state.pdfDoc) return; throw err; }   // closed meanwhile
+  if (doc !== state.pdfDoc || num !== state.currentPage) return;   // a newer call asked for another page
+  const viewportBase = page.getViewport({ scale: 1 });
+
+  if (fit || !state.fitScale) {
+    const st = $('#stage');
+    const byW = (st.clientWidth - 48) / viewportBase.width;
+    const byH = (st.clientHeight - 48) / viewportBase.height;
+    state.fitScale = Math.max(0.2, state.fitMode === 'width' ? byW : Math.min(byW, byH));
+    state.scale = state.fitScale;
+  }
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // A picture is drawn no finer than its own pixels; the screen stretches it beyond that.
+  const viewport = page.getViewport({ scale: doc.isImage ? Math.min(state.scale * dpr, doc.maxScale) : state.scale * dpr });
+  // A fresh canvas each time, put on screen at once (the page paints in) or, with keep, once it is done.
+  const canvas = document.createElement('canvas');
+  canvas.id = 'pageCanvas';
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  canvas.style.width = (viewportBase.width * state.scale) + 'px';
+  canvas.style.height = (viewportBase.height * state.scale) + 'px';
+  if (!keep) $('#pageCanvas').replaceWith(canvas);
+  if (land) { const st = $('#stage'); st.scrollTop = land === 'top' ? 0 : st.scrollHeight; }
+
+  if (state.renderTask) { try { state.renderTask.cancel(); } catch(e){} }
+  const task = page.render({ canvasContext: canvas.getContext('2d'), viewport });
+  state.renderTask = task;
+  try { await task.promise; } catch (e) { return; }   // cancelled: a newer drawing took over
+  if (keep) $('#pageCanvas').replaceWith(canvas);
+
+  $('#zoomLabel').textContent = Math.round(state.scale * 75) + '%';   // 100% = the page's real size on screen
+  highlightCurrentThumb();
+}
+
+$('#prevPage').addEventListener('click', () => renderMainPage(state.currentPage - 1));
+$('#nextPage').addEventListener('click', () => renderMainPage(state.currentPage + 1));
+$('#pageNumInput').addEventListener('change', (e) => renderMainPage(parseInt(e.target.value,10) || 1));
+$('#zoomIn').addEventListener('click', () => zoomBy(1.2));
+$('#zoomOut').addEventListener('click', () => zoomBy(1 / 1.2));
+$('#zoomFit').addEventListener('click', () => { state.fitMode = 'width'; renderMainPage(state.currentPage, true); });
+$('#zoomPage').addEventListener('click', () => { state.fitMode = 'page'; renderMainPage(state.currentPage, true); });
+
+/* Zoom: ＋ / － and Ctrl + wheel. The page is resized on screen at once and drawn sharp a moment after
+   the last step. The point under the cursor (the middle, for the buttons) stays where it is. */
+const MAX_SCALE = 400 / 75;   // 400% on the zoom label; a larger page image is too big for older PCs
+const ZOOM_NOTCH = 100 * Math.log(1.2);   // the wheel deltaY of one 1.2× step
+let zoomTimer = null;
+function zoomBy(factor, x, y) {
+  if (!state.pdfDoc) return;
+  const scale = Math.min(Math.max(state.scale * factor, 0.2), MAX_SCALE);
+  const k = scale / state.scale;
+  if (k === 1) return;
+  state.scale = scale;
+  if (state.renderTask) { try { state.renderTask.cancel(); } catch(e){} }   // a drawing at the old size must not come back
+  const st = $('#stage'), canvas = $('#pageCanvas');
+  if (x === undefined) { const r = st.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+  const before = canvas.getBoundingClientRect();
+  canvas.style.width = before.width * k + 'px';
+  canvas.style.height = before.height * k + 'px';
+  const after = canvas.getBoundingClientRect();
+  st.scrollLeft += after.left - before.left + (x - before.left) * (k - 1);
+  st.scrollTop += after.top - before.top + (y - before.top) * (k - 1);
+  $('#zoomLabel').textContent = Math.round(scale * 75) + '%';
+  clearTimeout(zoomTimer);
+  zoomTimer = setTimeout(() => renderMainPage(state.currentPage, false, { keep: true }), 150);
+}
+
+/* Wheel and ↑ ↓ on the page. A page taller than the view scrolls first; at its top or bottom edge the
+   next step turns the page. A mouse wheel turns a page per notch. A touchpad sends a stream of small
+   steps that keeps coasting after the fingers lift, so it turns one page per swipe: the stream has to
+   pause before it turns another. Ctrl + wheel, or pinching on the touchpad, zooms. */
+const stageEl = $('#stage');
+const atPageEdge = (dir) => dir > 0 ? stageEl.scrollTop + stageEl.clientHeight >= stageEl.scrollHeight - 2 : stageEl.scrollTop < 2;
+const isNotch = (e) => e.deltaMode !== 0 || (e.wheelDeltaY !== 0 && e.wheelDeltaY % 120 === 0);
+function turnPage(dir) {
+  const num = state.currentPage + dir;
+  if (num >= 1 && num <= state.numPages) renderMainPage(num, false, { land: dir > 0 ? 'top' : 'bottom' });
+}
+let swipe = { at: -Infinity };
+stageEl.addEventListener('wheel', (e) => {
+  if (!state.pdfDoc || e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  const px = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 100 : 1);   // lines or pages to pixels
+  if (e.ctrlKey) {
+    // A touchpad pinch reports deltaY = -100·ln(scale), followed here exactly; a wheel notch
+    // (deltaY 100) is capped to one 1.2× step, the same as ＋ / －.
+    e.preventDefault();
+    zoomBy(Math.exp(-Math.max(-ZOOM_NOTCH, Math.min(ZOOM_NOTCH, px)) / 100), e.clientX, e.clientY);
+    return;
+  }
+  const dir = Math.sign(px);
+  if (!dir || !atPageEdge(dir)) return;   // the page scrolls
+  e.preventDefault();
+  if (e.timeStamp - swipe.at > 150) swipe = { sum: 0, smooth: false, turned: false };
+  swipe.at = e.timeStamp;
+  if (!isNotch(e)) swipe.smooth = true;
+  if (!swipe.smooth) { turnPage(dir); return; }
+  swipe.sum += px;
+  if (!swipe.turned && Math.abs(swipe.sum) >= 40) { swipe.turned = true; turnPage(dir); }
+}, { passive: false });
+document.addEventListener('keydown', (e) => {
+  if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || e.ctrlKey || e.altKey || e.metaKey) return;
+  if (!state.pdfDoc || !isPdfScreen(state.mode) || !$('#printDlg').hidden) return;
+  if (e.target.closest && e.target.closest('input, select, textarea')) return;
+  e.preventDefault();
+  const dir = e.key === 'ArrowDown' ? 1 : -1;
+  if (atPageEdge(dir)) turnPage(dir);
+  else stageEl.scrollBy({ top: dir * 40, behavior: e.repeat ? 'auto' : 'smooth' });
+});
+
+/* Hand tool, as in Photoshop but without holding Space: when the page is larger than the view, the pointer
+   over it is a hand, and dragging with the left button moves the page around. Touch screens scroll natively. */
+let pan = null;
+const canPan = () => !!state.pdfDoc &&
+  (stageEl.scrollWidth > stageEl.clientWidth + 1 || stageEl.scrollHeight > stageEl.clientHeight + 1);
+stageEl.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || e.pointerType === 'touch' || !canPan()) return;
+  const r = stageEl.getBoundingClientRect();                     // a press on a scroll bar works it as usual
+  if (e.clientX - r.left >= stageEl.clientLeft + stageEl.clientWidth || e.clientY - r.top >= stageEl.clientTop + stageEl.clientHeight) return;
+  e.preventDefault();
+  pan = { id: e.pointerId, x: e.clientX, y: e.clientY, left: stageEl.scrollLeft, top: stageEl.scrollTop };
+  stageEl.setPointerCapture(e.pointerId);
+  stageEl.classList.add('panning');
+});
+stageEl.addEventListener('pointermove', (e) => {
+  if (pan && e.pointerId === pan.id) {
+    stageEl.scrollLeft = pan.left - (e.clientX - pan.x);
+    stageEl.scrollTop = pan.top - (e.clientY - pan.y);
+  } else if (e.pointerType !== 'touch') {
+    stageEl.classList.toggle('can-pan', canPan());               // zooming changes it, so it is checked here
+  }
+});
+function endPan() {
+  if (!pan) return;
+  if (stageEl.hasPointerCapture(pan.id)) stageEl.releasePointerCapture(pan.id);
+  pan = null;
+  stageEl.classList.remove('panning');
+}
+stageEl.addEventListener('pointerup', endPan);
+stageEl.addEventListener('pointercancel', endPan);
+stageEl.addEventListener('lostpointercapture', endPan);
+
+/* ---------------- Thumbnail rail (virtualized) ---------------- */
+function buildThumbRail() {
+  const rail = $('#rail');
+  rail.querySelectorAll('.thumb').forEach(n => n.remove());
+  if (state.thumbObserver) state.thumbObserver.disconnect();
+
+  state.thumbObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        if (!el.dataset.rendered) {
+          el.dataset.rendered = '1';
+          renderThumb(parseInt(el.dataset.page,10), el.querySelector('canvas')).catch(() => {});   // the document may be replaced meanwhile
+        }
+      }
+    });
+  }, { root: rail, rootMargin: '200px 0px' });
+
+  for (let i = 1; i <= state.numPages; i++) {
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    div.dataset.page = i;
+    div.innerHTML = `<canvas></canvas><span class="thumb-num">${i}</span>
+      <span class="thumb-check"><svg viewBox="0 0 16 16"><polyline points="2,9 6,13 14,3"></polyline></svg></span>`;
+    div.addEventListener('click', (e) => onThumbClick(i, e));
+    rail.appendChild(div);
+    state.thumbObserver.observe(div);
+  }
+  highlightCurrentThumb();
+  renderThumbStates();
+}
+async function renderThumb(num, canvas) {
+  const page = await state.pdfDoc.getPage(num);
+  const vp0 = page.getViewport({ scale: 1 });
+  const targetW = 108;
+  const scale = targetW / vp0.width;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const viewport = page.getViewport({ scale: scale * dpr });
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  try { await page.render({ canvasContext: ctx, viewport }).promise; } catch(e) {}
+}
+function onThumbClick(num, e) {
+  if (isSelectScreen(state.mode)) {
+    if (state.selected.has(num)) state.selected.delete(num); else state.selected.add(num);
+    renderThumbStates();
+    updateSelCount();
+  } else {
+    renderMainPage(num);
+  }
+}
+function highlightCurrentThumb() {
+  document.querySelectorAll('.thumb').forEach(el => {
+    el.classList.toggle('current', parseInt(el.dataset.page,10) === state.currentPage);
+  });
+  const current = document.querySelector('.thumb.current');
+  if (current) current.scrollIntoView({ block: 'nearest' });
+}
+function renderThumbStates() {
+  const showCheck = isSelectScreen(state.mode);
+  document.querySelectorAll('.thumb').forEach(el => {
+    const p = parseInt(el.dataset.page,10);
+    el.classList.toggle('checked', showCheck && state.selected.has(p));
+  });
+}
+
+/* ---------------- Selection toolbar (text recognition) ---------------- */
+$('#selAll').addEventListener('click', () => {
+  for (let i=1;i<=state.numPages;i++) state.selected.add(i);
+  renderThumbStates(); updateSelCount();
+});
+$('#selNone').addEventListener('click', () => { state.selected.clear(); renderThumbStates(); updateSelCount(); });
+$('#selInvert').addEventListener('click', () => {
+  const next = new Set();
+  for (let i=1;i<=state.numPages;i++) if (!state.selected.has(i)) next.add(i);
+  state.selected = next; renderThumbStates(); updateSelCount();
+});
+$('#rangeApply').addEventListener('click', () => {
+  const set = parseRanges($('#rangeInput').value, state.numPages);
+  set.forEach(p => state.selected.add(p));
+  renderThumbStates(); updateSelCount();
+});
+function updateSelCount() {
+  $('#selCount').textContent = t('已选 {n} 页', { n: state.selected.size });
+}
+
+function renderSelectActionSlot() {
+  const slot = $('#actionSlot');
+  slot.innerHTML = '';
+  if (state.mode === 'ocr') {
+    // Each extra language makes reading slower, so only the chosen ones are used (and remembered).
+    const langs = (localGet('ocrLangs') || 'chi_sim,eng').split(',');
+    slot.innerHTML = [['chi_sim', t('中文')], ['eng', t('英文')], ['tha', t('泰文')]].map(([v, label]) =>
+      `<label class="ocr-lang"><input type="checkbox" name="ocrLang" value="${v}"${langs.includes(v) ? ' checked' : ''}>${label}</label>`).join('') +
+      `<select id="ocrOutSel"><option value="pdf">${t('生成可搜索 PDF')}</option><option value="txt">${t('导出文字（TXT）')}</option></select>` +
+      `<button class="btn small primary" id="ocrRun" style="margin-left:6px" title="${t('没有选择页面时，识别全部页面')}">${t('开始识别')}</button>`;
+    slot.querySelectorAll('input[name=ocrLang]').forEach((box) => box.addEventListener('change', () =>
+      localSet('ocrLangs', [...slot.querySelectorAll('input[name=ocrLang]:checked')].map((x) => x.value).join(','))));
+    $('#ocrRun').addEventListener('click', runOcr);
+  }
+}
+const localGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const localSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+/* ---------------- Split ---------------- */
+async function exportPagesAsPdf(nums) {
+  if (!nums.length) return;
+  try {
+    await ensureLibs();
+    const indices = [...nums].sort((a,b)=>a-b).map(p => p-1);
+    const srcDoc = await PDFDocument.load(await plainBytes(state.pdfDoc, state.password));
+    const outDoc = await PDFDocument.create();
+    const pages = await outDoc.copyPages(srcDoc, indices);
+    pages.forEach(p => outDoc.addPage(p));
+    const bytes = await outDoc.save();
+    const suffix = (nums.length === 1 ? t('_第{n}页', { n: nums[0] }) : t('_节选')) + '.pdf';
+    downloadBlob(new Blob([bytes], {type:'application/pdf'}), baseName(state.fileName) + suffix);
+  } catch (err) { showMessage(t('导出没有完成'), errorText(err)); }
+}
+
+/* ---------------- Pages as pictures ---------------- */
+// Each page becomes a picture file of its own (no zip), saved beside the document, or in parent (a folder picked in
+// 转换): one page right there, several in a new <name>_图片 folder there. Nothing is overwritten: main.js takes the next
+// free name. In the web page, or for a document that is not a file on this computer, the pictures are downloaded.
+// → { saved: [{ path, name }], folder, toDisk }
+async function writePictures(doc, src, base, nums, { fmt = 'png', scale = 2, parent = null, progress = () => {}, stopped = () => false } = {}) {
+  const api = window.electronAPI;
+  const toDisk = !!(api && (src || parent));
+  const mime = fmt === 'png' ? 'image/png' : 'image/jpeg';
+  const ext = fmt === 'png' ? 'png' : 'jpg';
+  const saved = [];
+  let folder = null;
+  if (toDisk && nums.length > 1) {
+    folder = await api.makeFolder(src, base + t('_图片'), parent);
+    if (folder.error) throw new Error(folder.error);
+  }
+  for (const [k, num] of nums.entries()) {
+    if (stopped()) break;
+    progress(k + 1, nums.length);
+    const page = await doc.getPage(num);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); }
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const blob = await new Promise(res => canvas.toBlob(res, mime, 0.92));
+    canvas.width = canvas.height = 0;                // frees the drawing before the next page (older PCs)
+    const name = `${base}${t('_第{n}页', { n: num })}.${ext}`;
+    if (!toDisk) { downloadBlob(blob, name); continue; }
+    const r = await api.saveImage(src, folder ? folder.dir : parent, name, new Uint8Array(await blob.arrayBuffer()));
+    if (r.error) throw new Error(r.error);
+    saved.push(r);
+  }
+  return { saved, folder, toDisk };
+}
+// After saving: where the pictures are, and 打开文件夹.
+async function picturesSaved({ saved, folder }) {
+  if (!saved.length) return;
+  const where = folder ? t('保存在新建的文件夹里：{path}', { path: folder.dir }) : t('保存为：{path}', { path: saved[0].path });
+  const answer = await askChoice(t('已导出 {n} 张图片', { n: saved.length }), where,
+    [{ label: t('打开文件夹'), value: 'open', primary: true }, { label: t('知道了'), value: 'ok', cancel: true }]);
+  if (answer === 'open') window.electronAPI.showInFolder(saved[0].path);
+}
+// 把第 n 页导出为图片 (the page and thumbnail menus): beside the open document.
+let imgExporting = false;
+async function exportPagesAsImages(pageNums, opts = {}) {
+  if (imgExporting || !state.pdfDoc || !pageNums.length) return;
+  const doc = state.pdfDoc;
+  imgExporting = true;
+  try {
+    const result = await writePictures(doc, state.filePath, baseName(state.fileName), [...pageNums].sort((a, b) => a - b), opts);
+    if (result.toDisk) await picturesSaved(result);
+  } catch (err) {
+    if (docs.some((d) => d.doc === doc)) showMessage(t('导出没有完成'), errorText(err));   // a closed document just stops
+  } finally {
+    imgExporting = false;
+  }
+}
+
+/* ---------------- Text recognition (OCR add-on, desktop program) ---------------- */
+// The card at the bottom right: a title, a line of text, an optional progress bar, buttons [label, action, primary].
+function ocrCard(o) {
+  $('#ocrCard').hidden = !o;
+  if (!o) return;
+  $('#ocrTitle').textContent = o.title;
+  $('#ocrText').textContent = o.text || '';
+  $('#ocrBar').hidden = o.percent === undefined;
+  $('#ocrFill').style.width = (o.percent || 0) + '%';
+  const acts = $('#ocrActions');
+  acts.innerHTML = '';
+  for (const [label, run, primary] of o.actions || []) {
+    const b = document.createElement('button');
+    b.className = 'btn small' + (primary ? ' primary' : '');
+    b.textContent = label;
+    b.addEventListener('click', run);
+    acts.appendChild(b);
+  }
+  acts.hidden = !acts.children.length;
+}
+const closeOcrCard = () => ocrCard(null);
+
+// Each page is drawn at about 300 dpi and read by Tesseract. For a searchable PDF its text is laid over the
+// original page as an invisible layer, so the file looks the same but its text can be found and copied.
+let ocrJob = null;                                  // { stop, doc } while pages are being read
+async function runOcr() {
+  if (ocrJob || !state.pdfDoc) return;
+  const langs = [...document.querySelectorAll('input[name=ocrLang]:checked')].map((x) => x.value);
+  if (!langs.length) { ocrCard({ title: t('请至少选择一种语言'), actions: [[t('知道了'), closeOcrCard, true]] }); return; }
+  const asPdf = $('#ocrOutSel').value === 'pdf';
+  const doc = state.pdfDoc, name = state.fileName, password = state.password;
+  const nums = state.selected.size ? [...state.selected].sort((a, b) => a - b) : Array.from({ length: state.numPages }, (_, i) => i + 1);
+  // A stopped worker never answers, so every wait on it also ends when 停止 is pressed.
+  let worker = null, stopRequested = false, stopNow;
+  const stopped = new Promise((_, reject) => { stopNow = reject; });
+  stopped.catch(() => {});
+  const unlessStopped = (p) => Promise.race([p, stopped]);
+  const stop = () => { stopRequested = true; stopNow(new Error('stopped')); if (worker) worker.terminate(); };
+  ocrJob = { stop, doc };
+  let current = 0;
+  const show = (p) => {
+    const percent = (current + p) * 100 / nums.length;
+    ocrCard({ title: t('正在识别第 {i} / {n} 页', { i: current + 1, n: nums.length }), text: `${Math.floor(percent)}%`, percent, actions: [[t('停止'), stop]] });
+  };
+  ocrCard({ title: t('正在加载文字识别'), text: t('第一次识别需要几秒钟。'), percent: 0, actions: [[t('停止'), stop]] });
+  try {
+    if (asPdf) await ensureLibs();
+    if (!window.Tesseract) await loadScript('ocr/tesseract.min.js');
+    const base = new URL('ocr/', location.href).href;
+    const creating = Tesseract.createWorker(langs.join('+'), Tesseract.OEM.LSTM_ONLY, {
+      workerPath: base + 'worker.min.js', corePath: base, langPath: base, cacheMethod: 'none', workerBlobURL: false,
+      logger: (m) => { if (m.status === 'recognizing text' && !stopRequested) show(m.progress); },
+    });
+    creating.then((w) => { worker = w; if (stopRequested) w.terminate(); }, () => {});
+    await unlessStopped(creating);
+    const texts = [], layers = [];
+    for (const [i, num] of nums.entries()) {
+      current = i;
+      show(0);
+      const page = await unlessStopped(doc.getPage(num));
+      const [x0, y0, x1, y1] = page.view;
+      // About 300 dpi, the resolution Tesseract reads best, but at most about 12 million pixels a page.
+      const scale = Math.min(300 / 72, Math.sqrt(12e6 / ((x1 - x0) * (y1 - y0))));
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await unlessStopped(page.render({ canvasContext: ctx, viewport }).promise);
+      const image = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+      const imageWidth = canvas.width;
+      canvas.width = canvas.height = 0;
+      // preserve_interword_spaces keeps Tesseract from putting a space between every Chinese or Thai character.
+      await unlessStopped(worker.setParameters({ user_defined_dpi: String(Math.round(scale * 72)), preserve_interword_spaces: '1' }));
+      const { data } = await unlessStopped(worker.recognize(image, { pdfTitle: name, pdfTextOnly: true }, { text: true, blocks: asPdf, pdf: asPdf }));
+      texts.push(`${t('—— 第 {n} 页 ——', { n: num })}\n${fixThai(data.text.trim())}\n`);
+      if (asPdf) layers.push({ num, view: page.view, rotate: page.rotate,
+        layer: await ocrLayer(data.pdf, data.blocks.flatMap((b) => b.paragraphs.flatMap((p) => p.lines)), imageWidth) });
+    }
+    if (asPdf) {
+      const out = await PDFDocument.load(await plainBytes(doc, password));
+      for (const { num, view: [x0, y0, x1, y1], rotate, layer: layerDoc } of layers) {
+        const [layer] = await out.embedPdf(layerDoc);
+        const w = x1 - x0, h = y1 - y0;
+        // The text was read from the page as shown; the layer is turned back onto the page as stored (/Rotate).
+        const [x, y, width, height] = { 0: [x0, y0, w, h], 90: [x1, y0, h, w], 180: [x1, y1, w, h], 270: [x0, y1, h, w] }[rotate];
+        out.getPage(num - 1).drawPage(layer, { x, y, width, height, rotate: degrees(rotate) });
+      }
+      downloadBlob(new Blob([await out.save()], { type: 'application/pdf' }), baseName(name) + t('_可搜索') + '.pdf');
+    } else {
+      downloadBlob(new Blob([texts.join('\n')], { type: 'text/plain;charset=utf-8' }), baseName(name) + t('_文字') + '.txt');
+    }
+    ocrCard({ title: t('识别完成'), text: t('已识别 {n} 页。', { n: nums.length }), actions: [[t('知道了'), closeOcrCard, true]] });
+  } catch (err) {
+    if (stopRequested || doc !== state.pdfDoc) closeOcrCard();
+    else ocrCard({ title: t('识别没有完成'), actions: [[t('知道了'), closeOcrCard, true]], text: errorText(err) });
+  } finally {
+    if (worker) worker.terminate();
+    ocrJob = null;
+  }
+}
+
+// The invisible text layer of one page: each line of text as one string, laid on its baseline and stretched
+// over its width, in the glyphless font of Tesseract's own text-only page (borrowed with that page). Whole
+// lines, rather than Tesseract's word-by-word layer, keep Chinese and Thai phrases together when searching
+// and copying. Tesseract writes the Thai vowel ำ as two marks (ํ + า); they are put back together.
+const fixThai = (s) => s.replace(/ํา/g, 'ำ');
+async function ocrLayer(tesseractPdf, lines, imageWidth) {
+  const { PDFName, PDFDict } = PDFLib;
+  const doc = await PDFDocument.load(tesseractPdf);
+  const page = doc.getPage(0);
+  const { width, height } = page.getSize();
+  const k = width / imageWidth;                     // image pixels to points
+  const font = page.node.Resources().lookup(PDFName.of('Font'), PDFDict).keys()[0].toString();
+  let ops = 'BT 3 Tr\n';                            // 3 Tr: text that is not drawn
+  for (const { text, bbox, baseline } of lines) {
+    const s = fixThai(text.trim());
+    if (!s) continue;
+    const size = Math.max(1, (bbox.y1 - bbox.y0) * k);
+    const stretch = 100 * (bbox.x1 - bbox.x0) * k / (s.length * size * 0.5);   // its characters are half an em wide
+    let hex = '';
+    for (let i = 0; i < s.length; i++) hex += s.charCodeAt(i).toString(16).padStart(4, '0');
+    ops += `${font} ${size.toFixed(2)} Tf ${stretch.toFixed(2)} Tz 1 0 0 1 ${(bbox.x0 * k).toFixed(2)} ${(height - baseline.y0 * k).toFixed(2)} Tm <${hex}> Tj\n`;
+  }
+  ops += 'ET';
+  page.node.set(PDFName.of('Contents'), doc.context.register(doc.context.flateStream(Uint8Array.from(ops, (c) => c.charCodeAt(0)))));
+  return doc;
+}
+
+/* ---------------- Organizer: merge with page-level editing ---------------- */
+// Document identity hues, neighbours at least 60° apart; pale tints of them carry the areas.
+const SRC_COLORS = ['#2a8c7c', '#c78a1c', '#3b72c4', '#c2477a', '#5f9a2e'];
+const org = {
+  sources: new Map(),   // id -> { id, name, path, label, color, pdfjs, password, pageCount, aspect }
+  pages: [],            // output order: [{ uid, src, idx, rot }]
+  collapsed: new Set(), // source ids shown as one stacked tile (their pages are kept contiguous)
+  items: [],            // what is on screen, in order: [{ el, start, end, stack }]
+  selected: new Set(),  // page uids
+  anchor: null,
+  history: [],
+  tiles: new Map(),     // page uid -> tile element (kept after delete so undo is instant)
+  stacks: new Map(),    // source id -> stack element
+  srcCounter: 0,
+  uidCounter: 0,
+  dragUids: null,
+  dragFrom: null,
+  previewUid: null,
+  previewTask: null,
+};
+const orgGridEl = $('#orgGrid');
+const orgScrollEl = $('#orgScroll');
+const orgMarkerEl = $('#orgMarker');
+const orgSideEl = $('#orgSide');
+
+function orgStatus(msg) { $('#orgStatus').textContent = $('#orgStatus').title = msg || ''; }
+function orgOnShow() { $('#orgAddCurrent').hidden = !state.pdfDoc; }
+
+/* ---- loading sources ---- */
+async function orgLoadSource(bytes, name, password, path = null) {
+  const opened = await loadPdf({ data: bytes, password }, name).result;
+  if (!opened) return null;                          // the password was not given
+  const pdfjs = opened.doc;
+  const p1 = await pdfjs.getPage(1);
+  const v = p1.getViewport({ scale: 1 });
+  const n = ++org.srcCounter;
+  const base = name.replace(/\.pdf$/i, '') || t('未命名');
+  let label = base, k = 2;
+  const used = new Set([...org.sources.values()].map(x => x.label));
+  while (used.has(label)) label = `${base} (${k++})`;
+  const s = {
+    id: 's' + n, name, path, label,
+    color: SRC_COLORS[(n - 1) % SRC_COLORS.length],
+    pdfjs, password: opened.password, pageCount: pdfjs.numPages, aspect: v.width / v.height,
+  };
+  org.sources.set(s.id, s);
+  return s;
+}
+// items: [{ name, bytes, password?, path? }]; expand: show the new documents' pages instead of a stack.
+async function orgAddBuffers(items, insertAt, { expand = false } = {}) {
+  if (!items.length) return;
+  orgStatus(t('正在载入 {n} 个文件…', { n: items.length }));
+  const added = [];
+  const newSrc = [];
+  const errors = [];
+  for (const it of items) {
+    try {
+      const s = await orgLoadSource(it.bytes, it.name, it.password, it.path);
+      if (!s) continue;
+      newSrc.push(s.id);
+      for (let i = 0; i < s.pageCount; i++) added.push({ uid: 'p' + (++org.uidCounter), src: s.id, idx: i, rot: 0 });
+    } catch (err) {
+      errors.push(t('「{name}」无法读取', { name: it.name }));
+    }
+  }
+  if (added.length) {
+    orgPushHistory();
+    const at = insertAt == null ? org.pages.length : insertAt;
+    org.pages.splice(at, 0, ...added);
+    if (!expand) newSrc.forEach(id => org.collapsed.add(id));   // new documents arrive stacked
+    renderOrg();
+  }
+  orgStatus(errors.length ? errors.join(t('；')) : '');
+}
+async function orgAddFiles(files, insertAt) {
+  const pdfs = [...files].filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+  if (!pdfs.length) { orgStatus(t('只能添加 PDF 文件')); return; }
+  const items = [];
+  for (const f of pdfs) items.push({ name: f.name, bytes: await f.arrayBuffer(), path: pathOf(f) });
+  await orgAddBuffers(items, insertAt);
+}
+
+$('#orgAddBtn').addEventListener('click', () => $('#orgInput').click());
+$('#orgEmptyPick').addEventListener('click', () => $('#orgInput').click());
+$('#orgInput').addEventListener('change', (e) => { orgAddFiles(e.target.files); e.target.value = ''; });
+// A picture joins as the one-page PDF it is shown as. It is not a PDF file pages could be split off, so no path.
+$('#orgAddCurrent').addEventListener('click', async () => {
+  const doc = state.pdfDoc;
+  if (!doc) return;
+  const pic = !!doc.isImage, name = pic ? baseName(state.fileName) + '.pdf' : state.fileName;
+  let bytes;
+  try { bytes = await doc.getData(); } catch (err) { orgStatus(t('「{name}」无法读取', { name })); return; }
+  orgAddBuffers([{ name, bytes, password: state.password, path: pic ? null : state.filePath }]);
+});
+
+/* ---- history ---- */
+function orgPushHistory() {
+  org.history.push({ pages: org.pages.map(p => ({ ...p })), collapsed: [...org.collapsed] });
+  if (org.history.length > 80) org.history.shift();
+}
+function orgUndo() {
+  if (!org.history.length) return;
+  const h = org.history.pop();
+  org.pages = h.pages;
+  org.collapsed = new Set(h.collapsed);
+  const alive = new Set(org.pages.map(p => p.uid));
+  org.selected = new Set([...org.selected].filter(u => alive.has(u)));
+  renderOrg();
+}
+
+/* ---- stacking ---- */
+// Pull every page of `srcId` together at the position of its first page, keeping their order.
+function orgGather(srcId) {
+  const first = org.pages.findIndex(p => p.src === srcId);
+  if (first < 0) return;
+  const mine = org.pages.filter(p => p.src === srcId);
+  const rest = org.pages.filter(p => p.src !== srcId);
+  rest.splice(first, 0, ...mine);
+  org.pages = rest;
+}
+function orgCollapse(srcIds) {
+  orgPushHistory();
+  srcIds.forEach(id => { orgGather(id); org.collapsed.add(id); });
+  renderOrg();
+}
+function orgExpand(srcIds) {
+  srcIds.forEach(id => org.collapsed.delete(id));
+  renderOrg();
+}
+$('#orgExpandAll').addEventListener('click', () => orgExpand([...org.collapsed]));
+$('#orgCollapseAll').addEventListener('click', () => {
+  const ids = [...new Set(org.pages.map(p => p.src))].filter(id => !org.collapsed.has(id));
+  if (ids.length) orgCollapse(ids);
+});
+
+/* ---- thumbnails: lazy, concurrency-limited ---- */
+const orgQueue = [];
+let orgRendering = 0;
+const orgIO = new IntersectionObserver((entries) => {
+  for (const en of entries) {
+    const el = en.target;
+    el._visible = en.isIntersecting;
+    if (en.isIntersecting) orgEnqueue(el);
+  }
+  orgPump();
+}, { root: orgScrollEl, rootMargin: '400px 0px' });
+function orgEnqueue(el) {
+  if (!el._rendered && !el._queued) { el._queued = true; orgQueue.push(el); }
+}
+function orgPump() {
+  while (orgRendering < 3 && orgQueue.length) {
+    const el = orgQueue.shift();
+    if (!el._visible || !el.isConnected) { el._queued = false; continue; }
+    orgRendering++;
+    orgRenderThumb(el).catch(() => {}).finally(() => { orgRendering--; el._queued = false; orgPump(); });
+  }
+}
+async function orgRenderThumb(el) {
+  const key = el._key;
+  const s = org.sources.get(el.dataset.src);
+  const page = await s.pdfjs.getPage(+el.dataset.idx + 1);
+  const v1 = page.getViewport({ scale: 1 });
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const vp = page.getViewport({ scale: (240 * dpr) / Math.max(v1.width, v1.height) });
+  const c = el.querySelector('.pimg canvas');
+  c.width = Math.round(vp.width);
+  c.height = Math.round(vp.height);
+  await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+  if (el._key !== key) return;            // a stack's top page changed while rendering; the newer request redraws it
+  el._aspect = v1.width / v1.height;
+  el._rendered = true;
+  el.classList.add('ready');
+  orgLayoutTile(el);
+}
+function orgLayoutTile(el) {
+  const rot = el._rot || 0;
+  const stack = el.classList.contains('pstack');
+  const a = el._aspect || org.sources.get(el.dataset.src).aspect || 0.707;
+  const odd = (rot / 90) % 2 !== 0;
+  const va = odd ? 1 / a : a;
+  const k = stack ? 0.86 : 1;
+  const vw = (va >= 1 ? 100 : 100 * va) * k;
+  const vh = (va >= 1 ? 100 / va : 100) * k;
+  const w = (odd ? vh : vw) + '%';
+  const h = (odd ? vw : vh) + '%';
+  const place = (node, dx, dy) => {
+    node.style.width = w;
+    node.style.height = h;
+    node.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${rot}deg)`;
+  };
+  if (stack) {
+    place(el.querySelector('.pimg'), -6, 6);
+    const sheets = el.querySelectorAll('.sheet');
+    place(sheets[0], 6, -6);
+    place(sheets[1], 0, 0);
+  } else {
+    place(el.querySelector('.pimg'), 0, 0);
+  }
+}
+
+/* ---- rendering the grid ---- */
+function orgCreateTile(p) {
+  const s = org.sources.get(p.src);
+  const el = document.createElement('div');
+  el.className = 'ptile';
+  el.draggable = true;
+  el.dataset.uid = p.uid;
+  el.dataset.src = p.src;
+  el.dataset.idx = p.idx;
+  el.title = `${s.name}  ${t('第 {n} 页', { n: p.idx + 1 })}`;
+  el.style.setProperty('--src', s.color);
+  el.innerHTML = `
+    <div class="pframe">
+      <div class="pimg"><canvas></canvas></div>
+      <button class="pcollapse" data-a="collapse" title="${t('把「{name}」的所有页面收起叠在一起', { name: escapeHtml(s.label) })}">${t('收起')}</button>
+      <div class="pacts">
+        <button data-a="rl" title="${t('向左旋转')}">⟲</button>
+        <button data-a="rr" title="${t('向右旋转')}">⟳</button>
+        <button data-a="del" class="d" title="${t('删除此页')}">✕</button>
+      </div>
+    </div>
+    <div class="pcap"><span class="pnum"></span><span class="psrc"><i></i><span class="pname">${t('第{n}页', { n: p.idx + 1 })} · ${escapeHtml(s.label)}</span></span></div>`;
+  el._rot = 0;
+  orgLayoutTile(el);
+  org.tiles.set(p.uid, el);
+  orgIO.observe(el);
+  return el;
+}
+function orgStackEl(srcId) {
+  let el = org.stacks.get(srcId);
+  if (el) return el;
+  const s = org.sources.get(srcId);
+  el = document.createElement('div');
+  el.className = 'ptile pstack';
+  el.draggable = true;
+  el.dataset.src = srcId;
+  el.title = s.name;
+  el.style.setProperty('--src', s.color);
+  el.innerHTML = `
+    <div class="pframe">
+      <div class="sheet"></div><div class="sheet"></div>
+      <div class="pimg"><canvas></canvas></div>
+      <span class="pcount"></span>
+      <button class="pexpand" data-a="expand"></button>
+      <div class="pacts">
+        <button data-a="rl" title="${t('整份向左旋转')}">⟲</button>
+        <button data-a="rr" title="${t('整份向右旋转')}">⟳</button>
+        <button data-a="del" class="d" title="${t('移除这份文档')}">✕</button>
+      </div>
+    </div>
+    <div class="pcap"><span class="pnum"></span><span class="psrc"><i></i><span class="pname"></span></span></div>`;
+  org.stacks.set(srcId, el);
+  orgIO.observe(el);
+  return el;
+}
+function orgUpdateStack(el, start, end) {
+  const first = org.pages[start];
+  const s = org.sources.get(first.src);
+  const n = end - start + 1;
+  const key = first.src + ':' + first.idx;
+  if (el._key !== key) {                   // top page changed: redraw its thumbnail
+    el._key = key;
+    el.dataset.idx = first.idx;
+    el._rendered = false;
+    el._aspect = undefined;
+    el.classList.remove('ready');
+    if (el._visible) { orgEnqueue(el); orgPump(); }
+  }
+  el.classList.toggle('single', n < 2);
+  el.classList.toggle('pair', n === 2);
+  el._rot = first.rot;
+  orgLayoutTile(el);
+  el.querySelector('.pnum').textContent = n > 1 ? `${start + 1}–${end + 1}` : `${start + 1}`;
+  el.querySelector('.pcount').textContent = t('{n} 页', { n });
+  el.querySelector('.pexpand').textContent = t('展开 {n} 页', { n });
+  el.querySelector('.pname').textContent = s.label;
+}
+function renderOrg() {
+  org.collapsed.forEach(id => orgGather(id));   // a stacked document always stays in one piece
+  const frag = document.createDocumentFragment();
+  const items = [];
+  const seen = new Set();
+  let i = 0;
+  while (i < org.pages.length) {
+    const p = org.pages[i];
+    if (org.collapsed.has(p.src)) {
+      let j = i;
+      while (j + 1 < org.pages.length && org.pages[j + 1].src === p.src) j++;
+      const el = orgStackEl(p.src);
+      orgUpdateStack(el, i, j);
+      frag.appendChild(el);
+      items.push({ el, start: i, end: j, stack: true });
+      seen.add(p.src);
+      i = j + 1;
+    } else {
+      const el = org.tiles.get(p.uid) || orgCreateTile(p);
+      el.querySelector('.pnum').textContent = i + 1;
+      el.classList.toggle('docstart', !seen.has(p.src));
+      seen.add(p.src);
+      if (el._rot !== p.rot) { el._rot = p.rot; orgLayoutTile(el); }
+      frag.appendChild(el);
+      items.push({ el, start: i, end: i, stack: false });
+      i++;
+    }
+  }
+  org.items = items;
+  orgGridEl.replaceChildren(frag);
+  $('#orgEmpty').hidden = org.pages.length > 0;
+  renderOrgDocs();
+  renderOrgSel();
+}
+function renderOrgDocs() {
+  const order = [];
+  const counts = new Map();
+  for (const p of org.pages) {
+    if (!counts.has(p.src)) { counts.set(p.src, 0); order.push(p.src); }
+    counts.set(p.src, counts.get(p.src) + 1);
+  }
+  const box = $('#orgDocs');
+  box.innerHTML = '';
+  for (const id of order) {
+    const s = org.sources.get(id);
+    const row = document.createElement('div');
+    row.className = 'org-doc';
+    row.draggable = true;
+    row.dataset.src = id;
+    row.style.setProperty('--src', s.color);
+    row.title = `${s.name}\n${t('点击选中这份文档的全部页面；拖到右侧可整份移动')}`;
+    row.innerHTML = `<i class="sw"></i>
+      <div class="dm"><div class="dn">${escapeHtml(s.label)}</div></div>
+      <span class="dc">${counts.get(id)}/${s.pageCount}</span>
+      <button class="x" title="${t('移除这份文档的全部页面')}">✕</button>`;
+    box.appendChild(row);
+  }
+  $('#orgTotal').textContent = t('共 {n} 页，{d} 份文档', { n: org.pages.length, d: order.length });
+  $('#orgExport').disabled = org.pages.length === 0;
+  $('#orgSelAll').disabled = org.pages.length === 0;
+  $('#orgExpandAll').disabled = !order.some(id => org.collapsed.has(id));
+  $('#orgCollapseAll').disabled = !order.some(id => !org.collapsed.has(id));
+  $('#orgUndo').disabled = org.history.length === 0;
+  updatePrintBtn();
+}
+const orgItemUids = (it) => org.pages.slice(it.start, it.end + 1).map(p => p.uid);
+const orgItemOfEl = (el) => org.items.find(it => it.el === el);
+const orgItemOfUid = (uid) => {
+  const i = org.pages.findIndex(p => p.uid === uid);
+  return org.items.find(it => it.start <= i && i <= it.end);
+};
+function renderOrgSel() {
+  for (const it of org.items) it.el.classList.toggle('sel', orgItemUids(it).every(u => org.selected.has(u)));
+  const k = org.selected.size;
+  $('#orgSelCount').hidden = k === 0;
+  $('#orgSelCount').textContent = t('已选 {n} 页', { n: k });
+  ['#orgRotL', '#orgRotR', '#orgDel', '#orgExportSel'].forEach(sel => { $(sel).disabled = k === 0; });
+  $('#orgUndo').disabled = org.history.length === 0;
+}
+function orgSelectedInOrder() { return org.pages.filter(p => org.selected.has(p.uid)).map(p => p.uid); }
+
+/* ---- edits ---- */
+function orgRemove(uids) {
+  if (!uids.length) return;
+  orgPushHistory();
+  const set = new Set(uids);
+  org.pages = org.pages.filter(p => !set.has(p.uid));
+  uids.forEach(u => org.selected.delete(u));
+  renderOrg();
+}
+function orgRotate(uids, delta) {
+  if (!uids.length) return;
+  orgPushHistory();
+  const set = new Set(uids);
+  org.pages = org.pages.map(p => set.has(p.uid) ? { ...p, rot: (((p.rot + delta) % 360) + 360) % 360 } : p);
+  renderOrg();
+}
+function orgMove(uids, insertAt) {
+  const set = new Set(uids);
+  const moving = org.pages.filter(p => set.has(p.uid));
+  let before = 0;
+  for (let i = 0; i < insertAt && i < org.pages.length; i++) if (!set.has(org.pages[i].uid)) before++;
+  const rest = org.pages.filter(p => !set.has(p.uid));
+  rest.splice(before, 0, ...moving);
+  if (rest.every((p, i) => p.uid === org.pages[i].uid)) return; // nothing changed
+  orgPushHistory();
+  org.pages = rest;
+  renderOrg();
+}
+
+$('#orgUndo').addEventListener('click', orgUndo);
+$('#orgSelAll').addEventListener('click', () => { org.selected = new Set(org.pages.map(p => p.uid)); renderOrgSel(); });
+$('#orgRotL').addEventListener('click', () => orgRotate(orgSelectedInOrder(), -90));
+$('#orgRotR').addEventListener('click', () => orgRotate(orgSelectedInOrder(), 90));
+$('#orgDel').addEventListener('click', () => orgRemove(orgSelectedInOrder()));
+$('#orgZoom').addEventListener('input', (e) => orgGridEl.style.setProperty('--tile-w', e.target.value + 'px'));
+
+/* ---- selection ---- */
+orgScrollEl.addEventListener('click', (e) => {
+  const el = e.target.closest('.ptile');
+  if (!el) {
+    if (!e.target.closest('button')) { org.selected.clear(); renderOrgSel(); }
+    return;
+  }
+  const it = orgItemOfEl(el);
+  if (!it) return;
+  const uids = orgItemUids(it);
+  const btn = e.target.closest('button[data-a]');
+  if (btn) {
+    const a = btn.dataset.a;
+    if (a === 'expand') orgExpand([el.dataset.src]);
+    else if (a === 'collapse') orgCollapse([el.dataset.src]);
+    else if (a === 'del') orgRemove(uids);
+    else orgRotate(uids, a === 'rr' ? 90 : -90);
+    return;
+  }
+  const mod = e.ctrlKey || e.metaKey;
+  if (e.shiftKey && org.anchor) {
+    const a = org.pages.findIndex(p => p.uid === org.anchor);
+    if (a >= 0) {
+      if (!mod) org.selected.clear();
+      for (let i = Math.min(a, it.start); i <= Math.max(a, it.end); i++) org.selected.add(org.pages[i].uid);
+    }
+  } else if (mod) {
+    const all = uids.every(u => org.selected.has(u));
+    uids.forEach(u => (all ? org.selected.delete(u) : org.selected.add(u)));
+    org.anchor = uids[0];
+  } else {
+    org.selected = new Set(uids);
+    org.anchor = uids[0];
+  }
+  renderOrgSel();
+});
+orgScrollEl.addEventListener('dblclick', (e) => {
+  const el = e.target.closest('.ptile');
+  if (!el || e.target.closest('button')) return;
+  const it = orgItemOfEl(el);
+  if (it) orgOpenPreview(org.pages[it.start].uid);
+});
+
+$('#orgDocs').addEventListener('click', (e) => {
+  const row = e.target.closest('.org-doc');
+  if (!row) return;
+  const srcId = row.dataset.src;
+  const uids = org.pages.filter(p => p.src === srcId).map(p => p.uid);
+  if (e.target.closest('.x')) { orgRemove(uids); return; }
+  org.selected = new Set(uids);
+  org.anchor = uids[0];
+  renderOrgSel();
+  const it = orgItemOfUid(uids[0]);
+  if (it) it.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+});
+
+/* ---- drag & drop: pages, stacks, whole documents, files from the desktop ---- */
+function orgStartDrag(e, uids, from) {
+  org.dragUids = uids;
+  org.dragFrom = from;                                // 'grid' (pages on the board) or 'docs' (a whole document)
+  if (from === 'grid') orgSideEl.classList.add('split-ready');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', 'pdf-pages');
+  const ghost = $('#orgGhost');
+  if (uids.length > 1) {
+    ghost.textContent = t('移动 {n} 页', { n: uids.length });
+    e.dataTransfer.setDragImage(ghost, 24, 18);
+  }
+  requestAnimationFrame(() => {
+    const set = new Set(uids);
+    org.items.forEach(it => { if (orgItemUids(it).every(u => set.has(u))) it.el.classList.add('dragging'); });
+  });
+}
+function orgEndDrag() {
+  org.items.forEach(it => it.el.classList.remove('dragging'));
+  org.dragUids = null;
+  org.dragFrom = null;
+  orgSideEl.classList.remove('split-ready', 'split-over');
+  orgHideMarker();
+}
+orgGridEl.addEventListener('dragstart', (e) => {
+  const el = e.target.closest('.ptile');
+  const it = el && orgItemOfEl(el);
+  if (!it) return;
+  const uids = orgItemUids(it);
+  if (!uids.every(u => org.selected.has(u))) { org.selected = new Set(uids); org.anchor = uids[0]; renderOrgSel(); }
+  orgStartDrag(e, orgSelectedInOrder(), 'grid');
+});
+$('#orgDocs').addEventListener('dragstart', (e) => {
+  const row = e.target.closest('.org-doc');
+  if (!row) return;
+  const uids = org.pages.filter(p => p.src === row.dataset.src).map(p => p.uid);
+  org.selected = new Set(uids);
+  org.anchor = uids[0];
+  renderOrgSel();
+  orgStartDrag(e, uids, 'docs');
+});
+document.addEventListener('dragend', orgEndDrag);
+
+// Pages dragged from the board onto the document list are split off into a new document.
+orgSideEl.addEventListener('dragover', (e) => {
+  if (org.dragFrom !== 'grid') return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  orgSideEl.classList.add('split-over');
+});
+orgSideEl.addEventListener('dragleave', (e) => {                // moving onto a child also fires it: check the point
+  const r = orgSideEl.getBoundingClientRect();
+  if (e.clientX <= r.left || e.clientX >= r.right || e.clientY <= r.top || e.clientY >= r.bottom) orgSideEl.classList.remove('split-over');
+});
+orgSideEl.addEventListener('drop', (e) => {
+  if (org.dragFrom !== 'grid') return;
+  e.preventDefault();
+  e.stopPropagation();
+  const uids = org.dragUids;
+  orgEndDrag();
+  orgSplit(uids);
+});
+
+// Drop position always falls between two tiles or stacks, never inside a stack.
+function orgComputeInsert(x, y) {
+  if (!org.items.length) return { index: 0 };
+  let best = null, bestD = Infinity;
+  for (const it of org.items) {
+    const r = it.el.getBoundingClientRect();
+    const dy = y < r.top ? r.top - y : (y > r.bottom ? y - r.bottom : 0);
+    const dx = x < r.left ? r.left - x : (x > r.right ? x - r.right : 0);
+    const d = dy * 10000 + dx;   // same row wins first, then nearest column
+    if (d < bestD) { bestD = d; best = { it, r }; }
+  }
+  const after = x > best.r.left + best.r.width / 2;
+  return { index: after ? best.it.end + 1 : best.it.start, rect: best.r, after };
+}
+function orgShowMarker(ins) {
+  if (!ins.rect) { orgHideMarker(); return; }
+  const sr = orgScrollEl.getBoundingClientRect();
+  const x = (ins.after ? ins.rect.right + 9 : ins.rect.left - 9) - sr.left + orgScrollEl.scrollLeft - 1.5;
+  orgMarkerEl.style.left = x + 'px';
+  orgMarkerEl.style.top = (ins.rect.top - sr.top + orgScrollEl.scrollTop + 4) + 'px';
+  orgMarkerEl.style.height = (ins.rect.height - 8) + 'px';
+  orgMarkerEl.style.display = 'block';
+}
+function orgHideMarker() {
+  orgMarkerEl.style.display = 'none';
+  orgScrollEl.classList.remove('drop-files');
+}
+function orgAutoScroll(y) {
+  const r = orgScrollEl.getBoundingClientRect();
+  const edge = 70;
+  if (y < r.top + edge) orgScrollEl.scrollTop -= Math.ceil((r.top + edge - y) / 3);
+  else if (y > r.bottom - edge) orgScrollEl.scrollTop += Math.ceil((y - (r.bottom - edge)) / 3);
+}
+const orgIsFileDrag = (e) => !org.dragUids && [...(e.dataTransfer.types || [])].includes('Files');
+
+orgScrollEl.addEventListener('dragover', (e) => {
+  const files = orgIsFileDrag(e);
+  if (!org.dragUids && !files) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = files ? 'copy' : 'move';
+  if (files) orgScrollEl.classList.add('drop-files');
+  orgShowMarker(orgComputeInsert(e.clientX, e.clientY));
+  orgAutoScroll(e.clientY);
+});
+orgScrollEl.addEventListener('dragleave', (e) => {
+  if (!orgScrollEl.contains(e.relatedTarget)) orgHideMarker();
+});
+orgScrollEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const ins = orgComputeInsert(e.clientX, e.clientY).index;
+  orgHideMarker();
+  if (org.dragUids) { const uids = org.dragUids; orgEndDrag(); orgMove(uids, ins); }
+  else if (e.dataTransfer.files && e.dataTransfer.files.length) orgAddFiles(e.dataTransfer.files, ins);
+});
+// Anywhere else in the merge view: files dropped go to the end, and the window never navigates away.
+document.addEventListener('dragover', (e) => { if (state.mode === 'merge') e.preventDefault(); });
+document.addEventListener('drop', (e) => {
+  if (state.mode !== 'merge') return;
+  e.preventDefault();
+  if (!org.dragUids && e.dataTransfer.files && e.dataTransfer.files.length) orgAddFiles(e.dataTransfer.files);
+});
+
+/* ---- keyboard ---- */
+document.addEventListener('keydown', (e) => {
+  if (state.mode !== 'merge') return;
+  if (e.target.closest && e.target.closest('input, select, textarea')) return;
+  const mod = e.ctrlKey || e.metaKey;
+  if (!$('#orgPreview').hidden) {
+    if (e.key === 'Escape') orgClosePreview();
+    else if (e.key === 'ArrowRight' || e.key === 'PageDown') orgPreviewStep(1);
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') orgPreviewStep(-1);
+    else if (e.key === 'Delete') $('#pvDel').click();
+    else return;
+    e.preventDefault();
+    return;
+  }
+  if (mod && e.key.toLowerCase() === 'a') { org.selected = new Set(org.pages.map(p => p.uid)); renderOrgSel(); }
+  else if (mod && e.key.toLowerCase() === 'z') orgUndo();
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && org.selected.size) orgRemove(orgSelectedInOrder());
+  else if (e.key === 'Escape') { org.selected.clear(); renderOrgSel(); }
+  else return;
+  e.preventDefault();
+});
+
+/* ---- large preview ---- */
+function orgOpenPreview(uid) { org.previewUid = uid; $('#orgPreview').hidden = false; orgDrawPreview(); }
+function orgClosePreview() { $('#orgPreview').hidden = true; org.previewUid = null; }
+function orgPreviewStep(d) {
+  const i = org.pages.findIndex(p => p.uid === org.previewUid);
+  const j = i + d;
+  if (j < 0 || j >= org.pages.length) return;
+  org.previewUid = org.pages[j].uid;
+  orgDrawPreview();
+}
+async function orgDrawPreview() {
+  const i = org.pages.findIndex(p => p.uid === org.previewUid);
+  if (i < 0) { orgClosePreview(); return; }
+  const p = org.pages[i];
+  const s = org.sources.get(p.src);
+  $('#pvLabel').textContent = `${t('第 {i} / {n} 页', { i: i + 1, n: org.pages.length })} · ${s.name} ${t('第 {n} 页', { n: p.idx + 1 })}`;
+  $('#pvPrev').disabled = i === 0;
+  $('#pvNext').disabled = i === org.pages.length - 1;
+  const page = await s.pdfjs.getPage(p.idx + 1);
+  const rotation = (page.rotate + p.rot) % 360;
+  const base = page.getViewport({ scale: 1, rotation });
+  const stage = $('#pvStage');
+  const scale = Math.min((stage.clientWidth - 140) / base.width, (stage.clientHeight - 32) / base.height);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const vp = page.getViewport({ scale: scale * dpr, rotation });
+  const c = $('#pvCanvas');
+  if (org.previewTask) { try { org.previewTask.cancel(); } catch (err) {} }
+  c.width = Math.round(vp.width);
+  c.height = Math.round(vp.height);
+  c.style.width = (vp.width / dpr) + 'px';
+  c.style.height = (vp.height / dpr) + 'px';
+  org.previewTask = page.render({ canvasContext: c.getContext('2d'), viewport: vp });
+  try { await org.previewTask.promise; } catch (err) { /* replaced by a newer render */ }
+}
+$('#pvClose').addEventListener('click', orgClosePreview);
+$('#pvPrev').addEventListener('click', () => orgPreviewStep(-1));
+$('#pvNext').addEventListener('click', () => orgPreviewStep(1));
+$('#pvRotL').addEventListener('click', () => { orgRotate([org.previewUid], -90); orgDrawPreview(); });
+$('#pvRotR').addEventListener('click', () => { orgRotate([org.previewUid], 90); orgDrawPreview(); });
+$('#pvDel').addEventListener('click', () => {
+  const i = org.pages.findIndex(p => p.uid === org.previewUid);
+  orgRemove([org.previewUid]);
+  if (!org.pages.length) { orgClosePreview(); return; }
+  org.previewUid = org.pages[Math.min(i, org.pages.length - 1)].uid;
+  orgDrawPreview();
+});
+$('#pvStage').addEventListener('click', (e) => { if (e.target.id === 'pvStage') orgClosePreview(); });
+
+/* ---- export ---- */
+// A new PDF of these board pages, in this order and with their turns.
+async function orgBuildPdf(list) {
+  await ensureLibs();
+  const out = await PDFDocument.create();
+  const need = new Map();
+  for (const p of list) {
+    if (!need.has(p.src)) need.set(p.src, new Set());
+    need.get(p.src).add(p.idx);
+  }
+  const copied = new Map();
+  for (const [srcId, idxSet] of need) {
+    const s = org.sources.get(srcId);
+    const doc = await PDFDocument.load(await plainBytes(s.pdfjs, s.password));
+    const idxs = [...idxSet];
+    const pages = await out.copyPages(doc, idxs);   // one copy per source keeps shared fonts/images deduplicated
+    idxs.forEach((ix, k) => copied.set(srcId + ':' + ix, pages[k]));
+  }
+  for (const p of list) {
+    const pg = copied.get(p.src + ':' + p.idx);
+    if (p.rot) pg.setRotation(degrees((pg.getRotation().angle + p.rot) % 360));
+    out.addPage(pg);
+  }
+  return out.save();
+}
+async function orgExport(onlySelected) {
+  const list = onlySelected ? org.pages.filter(p => org.selected.has(p.uid)) : org.pages;
+  if (!list.length) return;
+  const buttons = ['#orgExport', '#orgExportSel'].map(s => $(s));
+  buttons.forEach(b => { b.disabled = true; });
+  orgStatus(t('正在生成 PDF…'));
+  try {
+    const bytes = await orgBuildPdf(list);
+    const name = ($('#orgName').value.trim() || t('合并结果')).replace(/[\\/:*?"<>|]/g, '_').replace(/\.pdf$/i, '');
+    downloadBlob(new Blob([bytes], { type: 'application/pdf' }), name + '.pdf');
+    orgStatus(t('已导出 {n} 页（{size}）', { n: list.length, size: fmtSize(bytes.length) }));
+  } catch (err) {
+    orgStatus(t('导出失败：') + (err && err.message ? err.message : err));
+  }
+  $('#orgExport').disabled = org.pages.length === 0;
+  $('#orgExportSel').disabled = org.selected.size === 0;
+}
+
+/* ---- splitting ---- */
+// Pages dragged onto the document list become a document of their own, saved beside the document the first
+// of them came from as <name>_1.pdf, then _2, … (the first free name: nothing is overwritten). It joins the
+// list right after that document. Then the person chooses whether the originals keep those pages or lose them
+// (their files are rewritten without them).
+async function orgSplit(uids) {
+  const set = new Set(uids);
+  const list = org.pages.filter(p => set.has(p.uid));
+  if (!list.length) return;
+  const taken = new Map();                            // source id -> indexes of its pages in the new document
+  for (const p of list) {
+    if (!taken.has(p.src)) taken.set(p.src, new Set());
+    taken.get(p.src).add(p.idx);
+  }
+  const first = org.sources.get(list[0].src);
+  if (taken.size === 1 && taken.get(first.id).size === first.pageCount) {
+    showMessage(t('不用拆分'), t('选中的就是「{name}」的全部页面。', { name: first.name }));
+    return;
+  }
+  const api = window.electronAPI;
+  orgStatus(t('正在拆分…'));
+  let bytes, saved;
+  try {
+    bytes = await orgBuildPdf(list);
+    if (api && first.path) {
+      saved = await api.saveBeside(first.path, bytes);
+      if (saved.error) throw new Error(saved.error);
+    } else {                                          // not a file on this computer: it is downloaded instead
+      saved = { name: orgNextName(first), path: null };
+      downloadBlob(new Blob([bytes], { type: 'application/pdf' }), saved.name);
+    }
+  } catch (err) {
+    orgStatus('');
+    showMessage(t('拆分没有完成'), errorText(err));
+    return;
+  }
+  const s = await orgLoadSource(bytes.slice(), saved.name, '', saved.path);
+  const at = org.pages.reduce((end, p, i) => (p.src === first.id ? i + 1 : end), org.pages.length);
+  orgPushHistory();
+  org.pages.splice(at, 0, ...Array.from({ length: s.pageCount }, (_, i) => ({ uid: 'p' + (++org.uidCounter), src: s.id, idx: i, rot: 0 })));
+  org.collapsed.add(s.id);
+  org.selected.clear();
+  renderOrg();
+  orgStatus(t('已拆分出「{name}」，共 {n} 页', { name: saved.name, n: list.length }));
+
+  // Originals that can lose the pages: files on this computer that keep at least one page.
+  const originals = [...taken].map(([id, idxs]) => ({ s: org.sources.get(id), idxs }))
+    .filter(o => api && o.s.path && o.idxs.size < o.s.pageCount);
+  if (!originals.length) return;
+  const n = originals.reduce((k, o) => k + o.idxs.size, 0);
+  let locked = false;
+  for (const o of originals) if ((await o.s.pdfjs.getMetadata()).info.EncryptFilterName) locked = true;
+  const names = originals.map(o => t('「{name}」', { name: o.s.name })).join(LANG === 'zh' ? '' : ', ');
+  const choice = await askChoice(t('已拆分出「{name}」', { name: saved.name }),
+    t('新文档共 {n} 页，已保存在原文档所在的文件夹。', { n: list.length }) + '\n\n' +
+    t('原文档{names}里的这 {n} 页，要删除还是保留？', { names, n }) + '\n' +
+    t('删除：原文件只留下其余的页面。保留：原文件不变。') + (locked ? '\n' + t('删除后，原文档不再有密码保护。') : ''), [
+      { label: t('删除这 {n} 页', { n }), value: 'delete', danger: true },
+      { label: t('保留'), value: 'keep', primary: true, cancel: true },
+    ]);
+  if (choice !== 'delete') return;
+  orgStatus(t('正在从原文档删除这些页…'));
+  const failed = [];
+  for (const o of originals) {
+    try { await orgRemoveFromFile(o.s, o.idxs); }
+    catch (err) { failed.push(t('「{name}」：{msg}', { name: o.s.name, msg: errorText(err) })); }
+  }
+  org.history = [];                                   // earlier board states show pages the files no longer have
+  renderOrg();
+  if (failed.length) { orgStatus(''); showMessage(t('原文档没有改动'), failed.join('\n')); }
+  else orgStatus(t('已拆分出「{name}」，并从原文档删除了这 {n} 页', { name: saved.name, n }));
+}
+// The web version can't write beside the original, so it names the downloads the same way.
+const orgSplitCounts = new Map();
+function orgNextName(s) {
+  const base = s.name.replace(/\.pdf$/i, '');
+  const k = (orgSplitCounts.get(base) || 0) + 1;
+  orgSplitCounts.set(base, k);
+  return `${base}_${k}.pdf`;
+}
+// Rewrites a document's file without the given pages and shows the file as it now is: its pages left on the
+// board keep their places and turns, the removed ones leave the board.
+async function orgRemoveFromFile(s, idxs) {
+  const doc = await PDFDocument.load(await plainBytes(s.pdfjs, s.password));
+  [...idxs].sort((a, b) => b - a).forEach(i => doc.removePage(i));
+  const bytes = await doc.save();
+  const r = await window.electronAPI.replaceFile(s.path, bytes);
+  if (r.error) throw new Error(r.error);
+  reloadDocFile(s.path, bytes.slice()).catch(() => {});
+  const { doc: pdfjs } = await loadPdf({ data: bytes.slice() }, s.name).result;
+  const newIdx = new Map();
+  for (let i = 0, k = 0; i < s.pageCount; i++) if (!idxs.has(i)) newIdx.set(i, k++);
+  org.pages = org.pages.flatMap((p) => {
+    if (p.src !== s.id) return [p];
+    const tile = org.tiles.get(p.uid);                // drawn from the old file: new tiles are made
+    if (tile) { orgIO.unobserve(tile); org.tiles.delete(p.uid); }
+    return idxs.has(p.idx) ? [] : [{ ...p, uid: 'p' + (++org.uidCounter), idx: newIdx.get(p.idx) }];
+  });
+  const old = s.pdfjs;
+  Object.assign(s, { pdfjs, password: '', pageCount: pdfjs.numPages });
+  const stack = org.stacks.get(s.id);
+  if (stack) stack._key = null;                       // its top page is drawn again from the new file
+  old.destroy();
+}
+$('#orgExport').addEventListener('click', () => orgExport(false));
+$('#orgExportSel').addEventListener('click', () => orgExport(true));
+
+renderOrg();
+
+/* ---------------- 转换: pictures to a PDF, a PDF to pictures ---------------- */
+// Two boxes. Pictures dropped (or picked) on the left become one PDF, a page each in file name order: Windows' save
+// window comes up at once, and the PDF is made where it says. A PDF dropped on the right is opened (its password
+// asked if it has one), then a small window asks for the picture format, the resolution, the pages and where to save,
+// and each page becomes a picture file there (no zip). One job at a time: the next waits for it.
+let cvChain = Promise.resolve();
+function cvQueue(job) {
+  cvChain = cvChain.then(job).catch((err) => showMessage(t('转换没有完成'), errorText(err)));
+  return cvChain;
+}
+const isPdfFile = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+const dirOf = (p) => p.replace(/[\\/][^\\/]*$/, '');
+const joinPath = (dir, name) => dir + (dir.includes('\\') ? '\\' : '/') + name;
+const byName = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;   // 2.jpg before 10.jpg
+function cvZone(zone, input, take) {
+  zone.addEventListener('click', (e) => { if (!e.target.closest('.cv-opt')) input.click(); });
+  zone.addEventListener('keydown', (e) => {
+    if (e.target === zone && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); input.click(); }
+  });
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag'); });
+  // relatedTarget is often empty here: whether the pointer really left is told by where it is
+  zone.addEventListener('dragleave', (e) => {
+    const r = zone.getBoundingClientRect();
+    if (e.clientX <= r.left || e.clientX >= r.right || e.clientY <= r.top || e.clientY >= r.bottom) zone.classList.remove('drag');
+  });
+  zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('drag'); take([...e.dataTransfer.files]); });
+  input.addEventListener('change', () => { const files = [...input.files]; input.value = ''; take(files); });
+}
+cvZone($('#cvImgZone'), $('#cvImgInput'), (files) => {
+  const pics = files.filter((f) => isImageName(f.name));
+  if (!pics.length) {
+    if (files.some(isPdfFile)) showMessage(t('这里放图片'), t('PDF 请拖到右边的「PDF 转图片」。'));
+    return;
+  }
+  cvQueue(() => imagesToPdf(pics.map((f) => ({ blob: f, name: f.name, path: pathOf(f) }))));
+});
+cvZone($('#cvPdfZone'), $('#cvPdfInput'), (files) => {
+  const pdfs = files.filter(isPdfFile);
+  if (!pdfs.length) {
+    if (files.some((f) => isImageName(f.name))) showMessage(t('这里放 PDF'), t('图片请拖到左边的「图片转 PDF」。'));
+    return;
+  }
+  for (const f of pdfs) cvQueue(() => pdfToImages(f.name, pathOf(f), () => f.arrayBuffer()));
+});
+
+// ---- pictures to a PDF. items: [{ blob, name, path }]; path null when not a file on this computer (downloaded).
+async function imagesToPdf(items) {
+  items = [...items].sort((a, b) => byName(a.name, b.name));
+  const api = window.electronAPI, first = items.find((it) => it.path);
+  const suggested = baseName(items[0].name) + '.pdf';
+  let target = null;
+  if (api && first) {
+    target = await api.choosePdfPath(joinPath(dirOf(first.path), suggested));
+    if (!target) return;                                 // the save window was cancelled
+  }
+  const status = $('#cvImgStatus');
+  try {
+    const bytes = await imagesPdfBytes(items, $('#pageSizeSel').value, (i, n) => { status.textContent = t('正在生成第 {i} / {n} 页…', { i, n }); });
+    status.textContent = '';
+    if (!target) { downloadBlob(new Blob([bytes], { type: 'application/pdf' }), suggested); return; }
+    const r = await api.writePdf(target, bytes);
+    if (r.error) throw new Error(r.error);
+    const answer = await askChoice(t('已生成 PDF'), t('共 {n} 页，保存为：{path}', { n: items.length, path: r.path }), [
+      { label: t('打开'), value: 'open', primary: true },
+      { label: t('打开文件夹'), value: 'folder' },
+      { label: t('知道了'), value: 'ok', cancel: true },
+    ]);
+    if (answer === 'open') await openPdfFromDisk({ path: r.path, name: r.name, size: bytes.length });
+    else if (answer === 'folder') api.showInFolder(r.path);
+  } finally {
+    status.textContent = '';
+  }
+}
+// The pictures as one PDF, a page each. 'auto': each page the picture's size (a pixel a point); 'a4p' / 'a4l': A4
+// standing or lying, the picture scaled to fit and centred.
+async function imagesPdfBytes(items, pageSize, progress) {
+  await ensureLibs();
+  const out = await PDFDocument.create();
+  const A4 = [595.28, 841.89];
+  for (const [k, it] of items.entries()) {
+    progress(k + 1, items.length);
+    let bmp;
+    try {
+      bmp = await createImageBitmap(it.blob);
+    } catch (err) {
+      throw new Error(t('「{name}」无法显示：图片可能已损坏，或者是不支持的格式。', { name: it.name }));
+    }
+    const img = await embedPicture(out, bmp, it.blob);
+    bmp.close();
+    const iw = img.width, ih = img.height;
+    if (pageSize === 'auto') {
+      out.addPage([iw, ih]).drawImage(img, { x: 0, y: 0, width: iw, height: ih });
+      continue;
+    }
+    const [pw, ph] = pageSize === 'a4l' ? [A4[1], A4[0]] : A4;
+    const f = Math.min(pw / iw, ph / ih);
+    out.addPage([pw, ph]).drawImage(img, { x: (pw - iw * f) / 2, y: (ph - ih * f) / 2, width: iw * f, height: ih * f });
+  }
+  return out.save();
+}
+
+// ---- a PDF to pictures: opened, then asked about in the window below. getBytes gives its contents.
+async function pdfToImages(name, path, getBytes) {
+  let opened;
+  try {
+    opened = await loadPdf({ data: await getBytes() }, name).result;
+  } catch (err) {
+    showMessage(t('无法打开'), t('「{name}」已损坏或不是 PDF。', { name }));
+    return;
+  }
+  if (!opened) return;                                   // the password was not given
+  try { await cvAsk(opened.doc, name, path); } finally { opened.doc.destroy(); }
+}
+let cv = null;                                           // the PDF in the window: { doc, name, path, parent, busy, stop, done }
+function cvAsk(doc, name, path) {
+  return new Promise((resolve) => {
+    cv = { doc, name, path, parent: null, busy: false, stop: false, done: resolve };
+    document.querySelector('input[name=cvRange][value=all]').checked = true;
+    $('#cvCustom').value = '';
+    $('#cvProgress').textContent = '';
+    $('#cvGo').disabled = $('#cvDirPick').disabled = false;
+    $('#cvDirGroup').hidden = !(window.electronAPI && path);
+    cvTexts();
+    $('#cvDlg').hidden = false;
+    $('#cvGo').focus();
+  });
+}
+// The texts naming the file and the folder (again when the language changes).
+function cvTexts() {
+  if (!cv) return;
+  const n = cv.doc.numPages;
+  $('#cvFile').textContent = `${cv.name} · ${t('共 {n} 页', { n })}`;
+  $('#cvAllCount').textContent = t('（{n} 页）', { n });
+  $('#cvDir').textContent = $('#cvDir').title = cv.parent || (cv.path ? dirOf(cv.path) : '');
+  $('#cvNote').textContent = t('选了多页时，会在这里新建「{folder}」文件夹。', { folder: baseName(cv.name) + t('_图片') });
+}
+function cvClose() {
+  if (!cv) return;
+  if (cv.busy) { cv.stop = true; return; }               // stops after the page being saved
+  $('#cvDlg').hidden = true;
+  const done = cv.done;
+  cv = null;
+  done();
+}
+$('#cvCancel').addEventListener('click', cvClose);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#cvDlg').hidden) cvClose(); });
+$('#cvCustom').addEventListener('input', () => { document.querySelector('input[name=cvRange][value=custom]').checked = true; });
+$('#cvDirPick').addEventListener('click', async () => {
+  const dir = await window.electronAPI.chooseFolder(cv.parent || dirOf(cv.path));
+  if (dir && cv) { cv.parent = dir; cvTexts(); }
+});
+$('#cvGo').addEventListener('click', async () => {
+  if (!cv || cv.busy) return;
+  const job = cv, n = job.doc.numPages;
+  const all = document.querySelector('input[name=cvRange]:checked').value === 'all';
+  const nums = all ? Array.from({ length: n }, (_, i) => i + 1) : [...parseRanges($('#cvCustom').value, n)].sort((a, b) => a - b);
+  if (!nums.length) { $('#cvProgress').textContent = t('请输入有效的页码，例如 1-3,5'); return; }
+  job.busy = true;
+  $('#cvGo').disabled = $('#cvDirPick').disabled = true;
+  let result;
+  try {
+    result = await writePictures(job.doc, job.path, baseName(job.name), nums, {
+      fmt: $('#cvFormat').value, scale: parseFloat($('#cvScale').value), parent: job.parent, stopped: () => job.stop,
+      progress: (i, total) => { $('#cvProgress').textContent = t('正在转换第 {i} / {n} 页…', { i, n: total }); },
+    });
+  } catch (err) {
+    job.busy = false;
+    $('#cvProgress').textContent = errorText(err);
+    $('#cvGo').disabled = $('#cvDirPick').disabled = false;
+    return;
+  }
+  job.busy = false;
+  const stopped = job.stop;
+  cvClose();
+  if (!stopped) await picturesSaved(result);
+});
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------------- Print ---------------- */
+// Pages are rendered to images at the chosen resolution, laid out one per sheet with print CSS,
+// then handed to the system print window (printer, paper, copies and duplex are chosen there).
+let printJob = null;
+let printCancelled = false;
+let printBusy = false;
+
+function currentPrintSource() {
+  if (state.mode === 'merge') {
+    if (!org.pages.length) return null;
+    return {
+      name: ($('#orgName').value.trim() || t('合并结果')),
+      merge: true,
+      pages: org.pages.map(p => ({ doc: org.sources.get(p.src).pdfjs, num: p.idx + 1, rot: p.rot, uid: p.uid })),
+    };
+  }
+  if (!state.pdfDoc) return null;
+  const pages = [];
+  for (let i = 1; i <= state.numPages; i++) pages.push({ doc: state.pdfDoc, num: i, rot: 0 });
+  return { name: state.fileName, merge: false, pages, current: state.currentPage };
+}
+function updatePrintBtn() {
+  $('#printBtn').disabled = state.mode === 'merge' ? !org.pages.length : !state.pdfDoc;
+}
+
+function openPrintDialog(opts) {
+  opts = opts && !(opts instanceof Event) ? opts : {};
+  if (printBusy) return;
+  printJob = currentPrintSource();
+  if (!printJob) return;
+  const n = printJob.pages.length;
+  $('#pdFile').textContent = `${printJob.name} · ${t('共 {n} 页', { n })}`;
+  $('#pdAllCount').textContent = t('（{n} 页）', { n });
+  const second = $('#pdSecond');
+  const secondRadio = document.querySelector('input[name=pdRange][value=second]');
+  if (printJob.merge) {
+    const k = org.pages.filter(p => org.selected.has(p.uid)).length;
+    second.textContent = k ? t('所选页面（{n} 页）', { n: k }) : t('所选页面（未选择）');
+    secondRadio.disabled = k === 0;
+  } else {
+    second.textContent = t('当前页（第 {n} 页）', { n: printJob.current });
+    secondRadio.disabled = false;
+  }
+  document.querySelector('input[name=pdRange][value=all]').checked = true;
+  $('#pdCustom').value = '';
+  $('#pdProgress').textContent = '';
+  $('#pdGo').disabled = false;
+  if (opts.pages) {
+    document.querySelector('input[name=pdRange][value=custom]').checked = true;
+    $('#pdCustom').value = opts.pages.join(',');
+  } else if (opts.selection && !secondRadio.disabled) {
+    secondRadio.checked = true;
+  }
+  $('#printDlg').hidden = false;
+  $('#pdGo').focus();
+}
+function closePrintDialog() {
+  if (printBusy) { printCancelled = true; return; }
+  $('#printDlg').hidden = true;
+}
+
+function selectedPrintPages() {
+  const all = printJob.pages;
+  const mode = document.querySelector('input[name=pdRange]:checked').value;
+  if (mode === 'all') return all;
+  if (mode === 'second') {
+    return printJob.merge ? all.filter(p => org.selected.has(p.uid)) : [all[printJob.current - 1]];
+  }
+  const set = parseRanges($('#pdCustom').value, all.length);
+  return [...set].sort((a, b) => a - b).map(i => all[i - 1]);
+}
+
+async function runPrint() {
+  const list = selectedPrintPages();
+  if (!list.length) { $('#pdProgress').textContent = t('请输入有效的页码，例如 1-3,5'); return; }
+  const dpi = parseInt($('#pdQuality').value, 10);
+  const autoRotate = $('#pdAutoRot').checked;
+  const area = $('#printArea');
+  const urls = [];
+  const imgs = [];
+  printBusy = true;
+  printCancelled = false;
+  $('#pdGo').disabled = true;
+  area.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  try {
+    for (let k = 0; k < list.length; k++) {
+      if (printCancelled) break;
+      $('#pdProgress').textContent = t('正在准备第 {i} / {n} 页…', { i: k + 1, n: list.length });
+      const it = list[k];
+      const page = await it.doc.getPage(it.num);
+      let rotation = (page.rotate + it.rot) % 360;
+      let base = page.getViewport({ scale: 1, rotation });
+      if (autoRotate && base.width > base.height) {   // landscape page on portrait paper: turn it to fill the sheet
+        rotation = (rotation + 90) % 360;
+        base = page.getViewport({ scale: 1, rotation });
+      }
+      let scale = Math.min(dpi / 72, 8000 / Math.max(base.width, base.height));
+      if (it.doc.isImage) scale = Math.min(scale, it.doc.maxScale);
+      const vp = page.getViewport({ scale, rotation });
+      canvas.width = Math.round(vp.width);
+      canvas.height = Math.round(vp.height);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.94));
+      const url = URL.createObjectURL(blob);
+      urls.push(url);
+      const sheet = document.createElement('div');
+      sheet.className = 'pp';
+      const img = new Image();
+      img.src = url;
+      img.alt = '';
+      sheet.appendChild(img);
+      area.appendChild(sheet);
+      imgs.push(img);
+    }
+    canvas.width = canvas.height = 0;
+    if (printCancelled) return;
+    $('#pdProgress').textContent = t('正在打开打印窗口…');
+    await Promise.all(imgs.map(im => im.decode().catch(() => {})));
+    $('#printDlg').hidden = true;
+    if (window.electronAPI && window.electronAPI.print) await window.electronAPI.print();
+    else window.print();
+  } catch (err) {
+    $('#printDlg').hidden = false;
+    $('#pdProgress').textContent = t('打印失败：') + (err && err.message ? err.message : err);
+    $('#pdGo').disabled = false;
+  } finally {
+    printBusy = false;
+    area.innerHTML = '';
+    urls.forEach(u => URL.revokeObjectURL(u));
+    if (printCancelled) $('#printDlg').hidden = true;
+  }
+}
+
+$('#printBtn').addEventListener('click', openPrintDialog);
+$('#pdCancel').addEventListener('click', closePrintDialog);
+$('#pdGo').addEventListener('click', runPrint);
+$('#pdCustom').addEventListener('focus', () => { document.querySelector('input[name=pdRange][value=custom]').checked = true; });
+$('#pdCustom').addEventListener('keydown', (e) => { if (e.key === 'Enter') runPrint(); });
+$('#printDlg').addEventListener('click', (e) => { if (e.target.id === 'printDlg') closePrintDialog(); });
+
+// Ctrl+P print, Ctrl+O open — captured first so no other shortcut handler sees them.
+document.addEventListener('keydown', (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  // The password, question and message dialogs wait for an answer (Esc is 取消 / 保留 / 知道了); the page behind ignores keys.
+  if (pwDone || askDone || !$('#msgDlg').hidden) {
+    e.stopImmediatePropagation();
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (pwDone) pwDone(null); else if (askDone) askDone(askCancel); else $('#msgDlg').hidden = true;
+    }
+    return;
+  }
+  if (!$('#printDlg').hidden && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closePrintDialog(); return; }
+  if (mod && e.key.toLowerCase() === 'p') { e.preventDefault(); e.stopImmediatePropagation(); openPrintDialog(); }
+  else if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); e.stopImmediatePropagation(); $('#openInput').click(); }
+}, true);
+
+/* ---------------- Right-click menus ---------------- */
+const ctxEl = document.createElement('div');
+ctxEl.className = 'ctx';
+ctxEl.setAttribute('role', 'menu');
+ctxEl.hidden = true;
+document.body.appendChild(ctxEl);
+function closeCtx() { ctxEl.hidden = true; ctxEl.innerHTML = ''; }
+function openCtx(x, y, items) {
+  ctxEl.innerHTML = '';
+  for (const it of items) {
+    if (it === '-') { const s = document.createElement('div'); s.className = 'ctx-sep'; ctxEl.appendChild(s); continue; }
+    const b = document.createElement('button');
+    b.className = 'ctx-item' + (it.danger ? ' danger' : '');
+    b.setAttribute('role', 'menuitem');
+    b.innerHTML = `<span>${escapeHtml(it.label)}</span>${it.key ? `<kbd>${escapeHtml(it.key)}</kbd>` : ''}`;
+    b.addEventListener('click', () => { closeCtx(); it.run(); });
+    ctxEl.appendChild(b);
+  }
+  ctxEl.style.left = '0px'; ctxEl.style.top = '0px';
+  ctxEl.hidden = false;
+  const r = ctxEl.getBoundingClientRect();
+  ctxEl.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px';
+  ctxEl.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px';
+  const first = ctxEl.querySelector('.ctx-item');
+  if (first) first.focus();
+}
+// Drop separators that end up at an edge or doubled once items are filtered out.
+function tidy(items) {
+  const out = [];
+  for (const it of items) {
+    if (!it) continue;
+    if (it === '-' && (!out.length || out[out.length - 1] === '-')) continue;
+    out.push(it);
+  }
+  while (out[out.length - 1] === '-') out.pop();
+  return out;
+}
+function viewerMenu(num, onThumb) {
+  if (isSelectScreen(state.mode)) {
+    const sel = state.selected.has(num);
+    return tidy([
+      { label: sel ? t('取消选择此页') : t('选择此页'), run: () => { sel ? state.selected.delete(num) : state.selected.add(num); renderThumbStates(); updateSelCount(); } },
+      { label: t('只选择此页'), run: () => { state.selected = new Set([num]); renderThumbStates(); updateSelCount(); } },
+      { label: t('全选'), run: () => $('#selAll').click() },
+      '-',
+      { label: t('把第 {n} 页导出为 PDF', { n: num }), run: () => exportPagesAsPdf([num]) },
+      { label: t('把第 {n} 页导出为图片', { n: num }), run: () => exportPagesAsImages([num], { fmt: 'png', scale: 2 }) },
+    ]);
+  }
+  return tidy([
+    onThumb && num !== state.currentPage && { label: t('转到此页'), run: () => renderMainPage(num) },
+    { label: t('打印第 {n} 页', { n: num }), run: () => openPrintDialog({ pages: [num] }) },
+    { label: t('打印…'), key: 'Ctrl+P', run: () => openPrintDialog() },
+    '-',
+    { label: t('把第 {n} 页导出为 PDF', { n: num }), run: () => exportPagesAsPdf([num]) },
+    { label: t('把第 {n} 页导出为图片', { n: num }), run: () => exportPagesAsImages([num], { fmt: 'png', scale: 2 }) },
+    '-',
+    !onThumb && { label: t('适合页面'), run: () => $('#zoomPage').click() },
+    !onThumb && { label: t('适合宽度'), run: () => $('#zoomFit').click() },
+    '-',
+    { label: t('加入合并拆分'), run: () => { setMode('merge'); $('#orgAddCurrent').click(); } },
+  ]);
+}
+function organizerMenu(tile) {
+  const it = orgItemOfEl(tile);
+  if (!it) return null;
+  const mine = orgItemUids(it);
+  // Like Explorer: right-clicking outside the selection selects what was clicked.
+  if (!mine.every((u) => org.selected.has(u))) { org.selected = new Set(mine); org.anchor = mine[0]; renderOrgSel(); }
+  const sel = orgSelectedInOrder();
+  const srcId = tile.dataset.src;
+  const s = org.sources.get(srcId);
+  if (it.stack && sel.length === mine.length) {
+    return tidy([
+      { label: t('展开「{name}」', { name: s.label }), run: () => orgExpand([srcId]) },
+      { label: t('预览'), run: () => orgOpenPreview(mine[0]) },
+      '-',
+      { label: t('整份向左旋转'), run: () => orgRotate(mine, -90) },
+      { label: t('整份向右旋转'), run: () => orgRotate(mine, 90) },
+      { label: t('只导出这份文档'), run: () => orgExport(true) },
+      { label: t('打印这份文档'), run: () => openPrintDialog({ selection: true }) },
+      '-',
+      { label: t('移除这份文档'), danger: true, run: () => orgRemove(mine) },
+    ]);
+  }
+  // Each label for this page or for the selected pages.
+  const scoped = (one, many) => (sel.length > 1 ? t(many, { n: sel.length }) : t(one));
+  return tidy([
+    { label: t('预览'), run: () => orgOpenPreview(it.stack ? mine[0] : tile.dataset.uid) },
+    '-',
+    { label: scoped('向左旋转此页', '向左旋转所选 {n} 页'), run: () => orgRotate(sel, -90) },
+    { label: scoped('向右旋转此页', '向右旋转所选 {n} 页'), run: () => orgRotate(sel, 90) },
+    { label: scoped('只导出此页', '只导出所选 {n} 页'), run: () => orgExport(true) },
+    { label: scoped('把此页拆分成新文档', '把所选 {n} 页拆分成新文档'), run: () => orgSplit(sel) },
+    { label: scoped('打印此页', '打印所选 {n} 页'), run: () => openPrintDialog({ selection: true }) },
+    '-',
+    !it.stack && { label: t('收起「{name}」', { name: s.label }), run: () => orgCollapse([srcId]) },
+    { label: scoped('删除此页', '删除所选 {n} 页'), key: 'Delete', danger: true, run: () => orgRemove(sel) },
+  ]);
+}
+function docRowMenu(row) {
+  const srcId = row.dataset.src;
+  const uids = org.pages.filter((p) => p.src === srcId).map((p) => p.uid);
+  const collapsed = org.collapsed.has(srcId);
+  return tidy([
+    { label: t('选中它的全部页面'), run: () => { org.selected = new Set(uids); org.anchor = uids[0]; renderOrgSel(); } },
+    collapsed ? { label: t('展开'), run: () => orgExpand([srcId]) } : { label: t('收起'), run: () => orgCollapse([srcId]) },
+    '-',
+    { label: t('移除这份文档'), danger: true, run: () => orgRemove(uids) },
+  ]);
+}
+function tabMenu(d) {
+  return tidy([
+    { label: t('关闭'), key: d.id === activeDocId ? 'Ctrl+W' : '', run: () => closeDoc(d) },
+    docs.length > 1 && { label: t('关闭其他文档'), run: () => closeDocs(docs.filter((x) => x !== d)) },
+    { label: t('全部关闭'), run: () => closeDocs([...docs]) },
+  ]);
+}
+function menuFor(target) {
+  const tab = target.closest('.doc-tab') && tabDoc(target);
+  if (tab) return tabMenu(tab);
+  const thumb = target.closest('.thumb');
+  if (thumb && state.pdfDoc) return viewerMenu(+thumb.dataset.page, true);
+  if (target.closest('#pageWrap') && state.pdfDoc) return viewerMenu(state.currentPage, false);
+  const tile = target.closest('#orgGrid .ptile');
+  if (tile) return organizerMenu(tile);
+  const row = target.closest('.org-doc');
+  if (row) return docRowMenu(row);
+  return null;
+}
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('input, textarea, select')) return;
+  const items = menuFor(e.target);
+  if (!items || !items.length) return;
+  e.preventDefault();
+  openCtx(e.clientX, e.clientY, items);
+});
+document.addEventListener('mousedown', (e) => { if (!ctxEl.hidden && !ctxEl.contains(e.target)) closeCtx(); }, true);
+document.addEventListener('keydown', (e) => {
+  if (ctxEl.hidden) return;
+  if (e.key === 'Escape') { closeCtx(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const items = [...ctxEl.querySelectorAll('.ctx-item')];
+    let i = items.indexOf(document.activeElement);
+    i = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+    items[i].focus();
+  } else return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, true);
+window.addEventListener('blur', closeCtx);
+window.addEventListener('resize', closeCtx);
+document.addEventListener('scroll', closeCtx, true);
+
+/* ---------------- Resize ---------------- */
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { if (state.pdfDoc) renderMainPage(state.currentPage, true); }, 150);
+});
+
+setMode('view');
+
+/* ---------------- Desktop: launches, large files, preload setting ---------------- */
+const BIG = 8 * 1024 * 1024;
+const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', tif: 'image/tiff', tiff: 'image/tiff' };
+async function openPdfFromDisk(f) {
+  const api = window.electronAPI;
+  const open = docAt(f.path);
+  if (open) return showDoc(open, 'view');
+  if (isImageName(f.name)) return openImage(new Blob([await api.readFile(f.path)]), f.name, f.path);
+  const pw = { value: '' };                          // a password typed for the first way is not asked again
+  if (f.size > BIG) {
+    // A large file first opens in pieces: pdf.js asks only for the byte ranges it needs (the table at
+    // the end, the first page), usually a megabyte or two. More than 24 pieces before the document is
+    // ready means its page list is spread over the whole file; then one straight read is faster than
+    // a seek per page, above all on a mechanical disk. A failed read takes the same way out.
+    const transport = new pdfjsLib.PDFDataRangeTransport(f.size, await api.readRange(f.path, 0, 256 * 1024));
+    let pieces = 0;
+    let giveUp;
+    const gaveUp = new Promise((resolve) => { giveUp = () => resolve(undefined); });
+    transport.requestDataRange = (begin, end) => {
+      if (++pieces > 24) giveUp();
+      api.readRange(f.path, begin, end).then((chunk) => transport.onDataRange(begin, chunk), giveUp);
+    };
+    const { task, result } = loadPdf({ range: transport, rangeChunkSize: 128 * 1024, disableAutoFetch: true, disableStream: true }, f.name, pw);
+    const opened = await Promise.race([result, gaveUp]).catch(() => undefined);
+    if (opened === null) return;                     // the password was not given
+    if (opened) return openPdfSource(opened, f.name, f.path);
+    task.destroy();
+  }
+  return openPdfSource({ data: await api.readFile(f.path), password: pw.value }, f.name, f.path);
+}
+async function handleLaunch({ action, files }) {
+  const api = window.electronAPI;
+  if (action === 'merge' || action === 'split') {
+    // 拆分页面 from Explorer opens the document spread out in 合并拆分, ready to drag pages off it.
+    setMode('merge');
+    const items = [];
+    for (const f of files) items.push({ name: f.name, bytes: await api.readFile(f.path), path: f.path });
+    await orgAddBuffers(items, undefined, { expand: action === 'split' });
+  } else if (action === 'img2pdf') {
+    // 用 GR Acrobat 转为 PDF from Explorer: straight to the save window (the job does not hold up later launches)
+    setMode('convert');
+    const items = [];
+    for (const f of files) {
+      const ext = f.name.split('.').pop().toLowerCase();
+      items.push({ blob: new Blob([await api.readFile(f.path)], { type: MIME[ext] || '' }), name: f.name, path: f.path });
+    }
+    cvQueue(() => imagesToPdf(items));
+  } else if (action === 'pdf2img') {
+    setMode('convert');
+    for (const f of files) cvQueue(() => pdfToImages(f.name, f.path, () => api.readFile(f.path)));
+  } else if (action === 'open') {
+    for (const f of files) await openPdfFromDisk(f);
+  } else {
+    await openPdfFromDisk(files[files.length - 1]);
+    if (action === 'print') openPrintDialog();
+  }
+}
+/* ---------------- Language ---------------- */
+// Switching shows everything on screen in the new language: the markup (i18n.js), and the parts the page
+// writes itself, drawn again. Kept in the desktop program's settings (it also uses it), or in this browser.
+let settingsSeen = null, updateSeen = null;        // shown again in another language
+function syncLanguageBits() {
+  document.querySelectorAll('.lang-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === LANG)));
+  const merged = ['合并结果', ...(TEXTS['合并结果'] || [])];       // the merged file's default name follows
+  if (merged.includes($('#orgName').value)) $('#orgName').value = t('合并结果');
+}
+function applyLanguage() {
+  translateMarkup();
+  orgStatus('');                                    // a passing message, written in the other language
+  syncLanguageBits();
+  updateTitle();
+  renderTabs();
+  updateSelCount();
+  if (isSelectScreen(state.mode)) renderSelectActionSlot();
+  org.tiles.forEach((el) => orgIO.unobserve(el));   // tiles carry their captions: made again
+  org.tiles.clear();
+  org.stacks.forEach((el) => orgIO.unobserve(el));
+  org.stacks.clear();
+  renderOrg();
+  cvTexts();
+  if (settingsSeen) $('#appVersion').textContent = t('版本 {v}', { v: settingsSeen.version });
+  if ($('#ocrToggle').textContent) {
+    const on = !!$('#ocrToggle').dataset.on;
+    $('#ocrState').textContent = on ? t('已安装') : t('未安装');
+    $('#ocrToggle').textContent = on ? t('移除') : t('安装');
+  }
+  if (updateSeen && !$('#updateCard').hidden) showUpdate(updateSeen);
+}
+document.querySelector('.lang-seg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-lang]');
+  if (!b || b.dataset.lang === LANG) return;
+  LANG = b.dataset.lang;
+  try { localStorage.setItem('lang', LANG); } catch {}
+  if (window.electronAPI) window.electronAPI.setLang(LANG);
+  applyLanguage();
+});
+syncLanguageBits();
+
+if (window.electronAPI) {
+  let chain = Promise.resolve();
+  const enqueue = (l) => { chain = chain.then(() => handleLaunch(l)).catch((err) => console.error(err)); };
+  window.electronAPI.onLaunch(enqueue);
+  window.electronAPI.ready().then((list) => list.forEach(enqueue));
+  // Closed to the tray: its documents close too, as when the program quits.
+  window.electronAPI.onClosedToTray(() => { chain = chain.then(() => closeDocs([...docs])).catch((err) => console.error(err)); });
+  window.electronAPI.getSettings().then((s) => {
+    settingsSeen = s;
+    $('#appVersion').textContent = t('版本 {v}', { v: s.version });
+    if (s.update) showUpdate(s.update);
+    $('#ocrRow').hidden = false;
+    setOcrInstalled(s.ocr);
+    // Offered once: after updating to the version that brings it, or on a new install.
+    if (!s.ocr && !localGet('ocrOffered')) ocrCard({
+      title: t('新功能：文字识别（OCR）'),
+      text: t('把扫描版 PDF 变成能搜索、能复制文字的 PDF，或导出文字。支持简体中文、英文和泰文。\n需要下载约 17 MB；只在识别时加载，不影响打开速度。'),
+      actions: [[t('不用了'), () => { localSet('ocrOffered', '1'); closeOcrCard(); }], [t('安装'), () => { localSet('ocrOffered', '1'); installOcr(); }, true]],
+    });
+    if (s.platform !== 'win32') return;
+    $('#residentRow').hidden = false;
+    $('#residentToggle').checked = !!s.resident;
+  });
+  $('#residentToggle').addEventListener('change', async (e) => {
+    e.target.checked = await window.electronAPI.setResident(e.target.checked);
+  });
+
+  // A newer version: the main process finds it, then reports each step of installing it.
+  function showUpdate(u) {
+    updateSeen = u;
+    $('#updateCard').hidden = false;
+    $('#ucTitle').textContent = t({ available: '发现新版本 {v}', downloading: '正在下载新版本 {v}',
+      installing: '正在安装新版本 {v}', error: '更新没有完成' }[u.state], { v: u.version });
+    // The notes come in each language (a release without English or Thai notes shows the Chinese ones).
+    const notes = typeof u.notes === 'string' ? u.notes : u.notes ? u.notes[LANG] || u.notes.zh : '';
+    $('#ucText').textContent = u.state === 'available' ? notes
+      : u.state === 'downloading' ? `${u.percent}%`
+      : u.state === 'installing' ? t('请在 Windows 弹出的确认窗口里点「是」。程序会自动关闭，装好后重新打开。')
+      : u.message;
+    $('#ucBar').hidden = u.state !== 'downloading';
+    $('#ucFill').style.width = (u.percent || 0) + '%';
+    $('#ucActions').hidden = u.state === 'downloading' || u.state === 'installing';
+    $('#ucGo').textContent = u.state === 'error' ? t('重试') : t('立即更新');
+  }
+  window.electronAPI.onUpdate(showUpdate);
+
+  // Text recognition add-on: installed only on request; until then the program has no 文字识别 screen.
+  function setOcrInstalled(on) {
+    $('#ocrTab').hidden = !on;
+    $('#ocrState').textContent = on ? t('已安装') : t('未安装');
+    $('#ocrToggle').textContent = on ? t('移除') : t('安装');
+    $('#ocrToggle').dataset.on = on ? '1' : '';
+    if (!on && state.mode === 'ocr') setMode('view');
+  }
+  // Progress comes as 'ocr' messages, which can arrive after the install's answer: once it has answered, a late
+  // one must not cover the result.
+  let ocrInstalling = false;
+  async function installOcr() {
+    ocrCard({ title: t('正在下载文字识别组件'), text: '0%', percent: 0 });
+    ocrInstalling = true;
+    let ok;
+    try { ok = await window.electronAPI.installOcr(); } finally { ocrInstalling = false; }
+    if (!ok) return;                                   // a failure arrives as an 'ocr' message
+    setOcrInstalled(true);
+    ocrCard({ title: t('文字识别已安装'), text: t('左边多了「文字识别」，打开扫描版 PDF 后就能用。'), actions: [[t('知道了'), closeOcrCard, true]] });
+  }
+  window.electronAPI.onOcr((m) => {
+    if (m.state === 'downloading') { if (ocrInstalling) ocrCard({ title: t('正在下载文字识别组件'), text: `${m.percent}%`, percent: m.percent }); }
+    else ocrCard({ title: t('文字识别没有装好'), text: m.message, actions: [[t('以后再说'), closeOcrCard], [t('重试'), installOcr, true]] });
+  });
+  $('#ocrToggle').addEventListener('click', async (e) => {
+    if (!e.currentTarget.dataset.on) { installOcr(); return; }
+    if (ocrJob || !confirm(t('移除文字识别？需要时可以重新安装。'))) return;
+    setOcrInstalled(await window.electronAPI.removeOcr());
+  });
+  $('#ucLater').addEventListener('click', () => { $('#updateCard').hidden = true; });
+  $('#ucGo').addEventListener('click', () => window.electronAPI.installUpdate());
+}
+setTimeout(preloadLibsWhenIdle, 2500);
+</script>
+</body>
+</html>

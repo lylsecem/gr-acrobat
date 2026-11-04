@@ -1,0 +1,47 @@
+# The end-to-end tests on every push and pull request (and before every release, see release.yml): the real
+# program (Electron, Linux build) driven by Playwright under Xvfb.
+name: 测试
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+      - name: System packages (Electron's libraries, Xvfb, Chinese and Thai fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb \
+            libnss3 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2t64 libxss1 \
+            fonts-wqy-zenhei fonts-noto-cjk fonts-thai-tlwg
+      - run: npm ci
+      - run: pip install -r tests/requirements.txt
+      - name: Text recognition packages (cached)
+        uses: actions/cache@v4
+        with:
+          path: tests/.cache/ocr-mirror
+          key: ocr-${{ hashFiles('main.js') }}
+      - name: End-to-end tests
+        run: python3 tests/run.py
+      - name: Screenshots and saved files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: tests/.out/
+          retention-days: 7

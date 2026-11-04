@@ -1,0 +1,5 @@
+3.1.1
+- Several documents open at once: each PDF or picture you open gets a tab above the page. Click a tab to switch; each document keeps its own page and zoom. Close one with the × on its tab (or Ctrl+W).
+- Pictures: JPG, PNG, GIF, BMP and WebP files open straight in GR Acrobat. You can zoom, print, or add them to Merge & split, with no other picture viewer needed.
+- New “Convert”: “To images” and “Images to PDF” are now one screen. Drag pictures into the left box and the save window opens at once; pick a place and the PDF is made. Drag a PDF into the right box, choose the image format and where to save, and it converts. Each page is saved as an image, no zip file, and existing files are never overwritten.
+- Fixed: after installing text recognition, the notice sometimes stayed at “Downloading text recognition 100%”.

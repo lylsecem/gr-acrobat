@@ -1,0 +1,7 @@
+# Python packages for the tests (pip install -r tests/requirements.txt). The tests drive the program's own
+# Electron window over its debugging port, so Playwright needs no browser download.
+playwright>=1.45
+pypdf>=4
+pikepdf>=8      # makes the password-protected test PDFs
+pillow>=10
+reportlab>=4

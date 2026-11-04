@@ -1,0 +1,41 @@
+# Pushing a version tag (v3.0.1 …) publishes that version: the tests first, then both installers and
+# latest.json, built from the tagged code, as a normal release marked latest (installed copies only look at
+# the latest normal release, never at pre-releases).
+name: 发布
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: The tag matches package.json
+        run: |
+          want="v$(node -p "require('./package.json').version")"
+          [ "$GITHUB_REF_NAME" = "$want" ] || { echo "tag $GITHUB_REF_NAME, package.json says $want"; exit 1; }
+      - run: npm ci
+      - name: Build both installers and latest.json
+        run: npm run dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          { cat build/release-notes.txt
+            for l in en th; do [ -f build/release-notes.$l.txt ] && { echo; cat build/release-notes.$l.txt; }; done
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" --title "GR Acrobat $version" --notes-file notes.md --latest \
+            "dist/GR-Acrobat-Setup-$version-x64.exe" "dist/GR-Acrobat-Setup-$version-ia32.exe" dist/latest.json

@@ -1,0 +1,4 @@
+LIBRARY GRAcrobatThumbs.dll
+EXPORTS
+  DllCanUnloadNow PRIVATE
+  DllGetClassObject PRIVATE
