@@ -43,7 +43,7 @@ def font_file(*names, lang=None):
 
 
 CJK_TTF = font_file('wqy-zenhei.ttc', 'simsun.ttc')                    # TrueType outlines, for reportlab
-CJK = font_file('NotoSansCJK-Regular.ttc', 'wqy-zenhei.ttc', 'msyh.ttc')
+CJK = font_file('msyh.ttc', 'wqy-zenhei.ttc', 'NotoSansCJK-Regular.ttc')   # Chinese shapes (Noto's first face is the Japanese one)
 THAI = font_file('Loma.otf', 'Loma.ttf', 'NotoSansThai-Regular.ttf', 'LeelawUI.ttf', 'tahoma.ttf', lang='th')
 SANS = font_file('DejaVuSans.ttf', 'arial.ttf')
 pdfmetrics.registerFont(TTFont('CJK', CJK_TTF, subfontIndex=0))
