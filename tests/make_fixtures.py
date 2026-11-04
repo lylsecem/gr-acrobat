@@ -11,7 +11,7 @@
 #   img/              pictures: photo.jpg, diagram.png (transparent), small.gif, pic.bmp, pic.webp, bad.png (not one)
 # Needs Pillow, reportlab, pypdf, pikepdf, and a Chinese and a Thai font (fonts-wqy-zenhei, fonts-noto-cjk,
 # fonts-thai-tlwg on Debian / Ubuntu; Windows has its own).
-import os, random, shutil
+import os, random, shutil, subprocess
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import pikepdf
@@ -26,19 +26,25 @@ OUT = Path(__file__).resolve().parent / '.fixtures'
 assert OUT.name == '.fixtures' and OUT.parent.name == 'tests'      # the only folder this script empties
 
 
-def font_file(*names):
+def font_file(*names, lang=None):
+    """The first of these font files found; failing that (lang given), any font fontconfig says covers that language."""
     roots = ['/usr/share/fonts', '/usr/local/share/fonts', os.path.expanduser('~/.fonts'), 'C:/Windows/Fonts']
     for name in names:
         for root in roots:
             for dirpath, _, files in os.walk(root):
                 if name in files:
                     return os.path.join(dirpath, name)
+    if lang and shutil.which('fc-list'):             # Linux font packages name their files differently over time
+        listed = subprocess.run(['fc-list', f':lang={lang}', 'file'], capture_output=True, text=True).stdout
+        found = sorted(l.strip().rstrip(':') for l in listed.splitlines() if l.strip().rstrip(':').endswith(('.ttf', '.otf')))
+        if found:
+            return found[0]
     raise SystemExit(f'font not found: {names}')
 
 
 CJK_TTF = font_file('wqy-zenhei.ttc', 'simsun.ttc')                    # TrueType outlines, for reportlab
 CJK = font_file('NotoSansCJK-Regular.ttc', 'wqy-zenhei.ttc', 'msyh.ttc')
-THAI = font_file('Loma.otf', 'NotoSansThai-Regular.ttf', 'LeelawUI.ttf', 'tahoma.ttf')
+THAI = font_file('Loma.otf', 'Loma.ttf', 'NotoSansThai-Regular.ttf', 'LeelawUI.ttf', 'tahoma.ttf', lang='th')
 SANS = font_file('DejaVuSans.ttf', 'arial.ttf')
 pdfmetrics.registerFont(TTFont('CJK', CJK_TTF, subfontIndex=0))
 
