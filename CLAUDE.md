@@ -13,7 +13,7 @@
 ## 目录
 
 ```
-main.js        主进程：单实例与启动参数（双击 / 打开方式打开 PDF 和图片；资源管理器右键菜单的 --merge/--split/--pdf2img/--print/--img2pdf）、
+main.js        主进程：单实例与启动参数（双击 / 打开方式打开 PDF 和图片；资源管理器右键菜单的 --merge/--split/--pdf2img/--print/--printall/--img2pdf）、
                文件读取白名单与按需分块读取、托盘与开机预加载、打印、自动更新、文字识别附加组件的下载、
                有密码 PDF 的解锁（调用 GRAcrobatUnlock.exe）、合并拆分写文件、转换的保存窗口和写文件、界面语言
 preload.js     contextBridge：页面能调用的全部主进程功能（window.electronAPI）

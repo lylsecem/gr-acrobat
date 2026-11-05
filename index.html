@@ -2780,7 +2780,7 @@ function updatePrintBtn() {
 function openPrintDialog(opts) {
   opts = opts && !(opts instanceof Event) ? opts : {};
   if (printBusy) return;
-  printJob = currentPrintSource();
+  printJob = opts.job || currentPrintSource();
   if (!printJob) return;
   const n = printJob.pages.length;
   $('#pdFile').textContent = `${printJob.name} · ${t('共 {n} 页', { n })}`;
@@ -2886,6 +2886,35 @@ async function runPrint() {
     area.innerHTML = '';
     urls.forEach(u => URL.revokeObjectURL(u));
     if (printCancelled) $('#printDlg').hidden = true;
+  }
+}
+
+// 合并打印 from Explorer: the selected PDFs one after another, in the order Explorer lists them by name, straight to
+// Windows' print window (all pages, the print dialog's usual quality). They are not opened in tabs. A protected one
+// asks for its password; one that cannot be read, or whose password is not given, is left out and named afterwards.
+async function printFiles(files) {
+  if (printBusy) return;
+  const api = window.electronAPI;
+  const docsToPrint = [], left = [];
+  const pages = [];
+  try {
+    for (const f of [...files].sort((a, b) => byName(a.name, b.name))) {
+      let opened = null;
+      try { opened = await loadPdf({ data: await api.readFile(f.path) }, f.name).result; } catch { opened = null; }
+      if (!opened) { left.push(f.name); continue; }
+      docsToPrint.push(opened.doc);
+      for (let i = 1; i <= opened.doc.numPages; i++) pages.push({ doc: opened.doc, num: i, rot: 0 });
+    }
+    if (pages.length) {
+      const n = docsToPrint.length;
+      openPrintDialog({ job: { name: t('合并打印 {n} 个文件', { n }), merge: false, pages, current: 1 } });
+      $('#pdQuality').value = '200';
+      $('#pdAutoRot').checked = true;
+      await runPrint();
+    }
+    if (left.length) showMessage(t('有 {n} 个文件没有打印', { n: left.length }), t('这些文件打不开，或者没有输入密码：') + '\n' + left.join('\n'));
+  } finally {
+    docsToPrint.forEach((d) => d.destroy());
   }
 }
 
@@ -3126,6 +3155,8 @@ async function handleLaunch({ action, files }) {
   } else if (action === 'pdf2img') {
     setMode('convert');
     for (const f of files) cvQueue(() => pdfToImages(f.name, f.path, () => api.readFile(f.path)));
+  } else if (action === 'printall') {
+    await printFiles(files);
   } else if (action === 'open') {
     for (const f of files) await openPdfFromDisk(f);
   } else {

@@ -103,7 +103,7 @@ function setResident(on) {
 /* ---------- Launch arguments ---------- */
 // Actions come from double-click / 打开方式 (open) and from the Explorer right-click menu. Open takes PDFs and
 // pictures (the window shows both); 转为 PDF takes pictures and 转为图片 PDFs (both in 转换); the others take PDFs.
-const ACTIONS = { '--merge': 'merge', '--split': 'split', '--pdf2img': 'pdf2img', '--print': 'print', '--img2pdf': 'img2pdf' };
+const ACTIONS = { '--merge': 'merge', '--split': 'split', '--pdf2img': 'pdf2img', '--print': 'print', '--printall': 'printall', '--img2pdf': 'img2pdf' };
 const IMG_EXT = /\.(jpe?g|png|gif|bmp|webp|tiff?)$/i;
 function parseArgs(argv) {
   let action = 'open';
@@ -188,18 +188,19 @@ ipcMain.handle('file:range', (_e, p, start, end) => {
 
 /* ---------- Delivering launches to the page ---------- */
 // Explorer starts one process per selected file; their requests are gathered for a moment
-// so that "合并" on five files opens one merge with five documents.
+// so that "合并" on five files opens one merge with five documents (合并打印 and 转为 PDF the same).
 let batch = null;
+const GATHERED = ['merge', 'printall', 'img2pdf'];
 function queueLaunch(parsed) {
   if (!parsed.files.length) return;
-  if (batch && batch.action === parsed.action && (parsed.action === 'merge' || parsed.action === 'img2pdf')) {
+  if (batch && batch.action === parsed.action && GATHERED.includes(parsed.action)) {
     batch.files.push(...parsed.files);
     clearTimeout(batch.timer);
   } else {
     if (batch) { clearTimeout(batch.timer); flush(); }
     batch = { action: parsed.action, files: [...parsed.files] };
   }
-  const gather = batch.action === 'merge' || batch.action === 'img2pdf' ? 350 : 0;
+  const gather = GATHERED.includes(batch.action) ? 350 : 0;
   batch.timer = setTimeout(flush, gather);
 }
 function flush() {

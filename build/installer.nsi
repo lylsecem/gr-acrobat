@@ -61,6 +61,67 @@ VIAddVersionKey /LANG=2052 "ProductVersion" "${VERSION}"
 !include "FileFunc.nsh"
 !include "Sections.nsh"
 
+; 右键菜单和文件类型名称的文字跟随 Windows 的显示语言：中文、泰文，其余都用英文。
+; 每次安装（包括自动更新）重新判断一次；测试时可以用 /MENULANG=zh|en|th 指定。
+Var MenuLang
+Var TxtOpen
+Var TxtMerge
+Var TxtSplit
+Var TxtImages
+Var TxtPrint
+Var TxtPrintAll
+Var TxtToPdf
+Var TxtPdfType
+Var TxtImgType
+Function PickMenuTexts
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/MENULANG=" $MenuLang
+  ${If} ${Errors}
+  ${OrIf} $MenuLang == ""
+    System::Call 'kernel32::GetUserDefaultUILanguage() i .r1'
+    IntOp $1 $1 & 0x3FF                            ; the language without its country
+    ${If} $1 = 0x04
+      StrCpy $MenuLang "zh"
+    ${ElseIf} $1 = 0x1E
+      StrCpy $MenuLang "th"
+    ${Else}
+      StrCpy $MenuLang "en"
+    ${EndIf}
+  ${EndIf}
+  ${If} $MenuLang == "zh"
+    StrCpy $TxtOpen "打开"
+    StrCpy $TxtMerge "合并所选文件"
+    StrCpy $TxtSplit "拆分页面"
+    StrCpy $TxtImages "转为图片"
+    StrCpy $TxtPrint "打印"
+    StrCpy $TxtPrintAll "合并打印"
+    StrCpy $TxtToPdf "用 GR Acrobat 转为 PDF"
+    StrCpy $TxtPdfType "PDF 文档"
+    StrCpy $TxtImgType "图片"
+  ${ElseIf} $MenuLang == "th"
+    StrCpy $TxtOpen "เปิด"
+    StrCpy $TxtMerge "รวมไฟล์ที่เลือก"
+    StrCpy $TxtSplit "แยกหน้า"
+    StrCpy $TxtImages "แปลงเป็นรูปภาพ"
+    StrCpy $TxtPrint "พิมพ์"
+    StrCpy $TxtPrintAll "รวมแล้วพิมพ์"
+    StrCpy $TxtToPdf "แปลงเป็น PDF ด้วย GR Acrobat"
+    StrCpy $TxtPdfType "เอกสาร PDF"
+    StrCpy $TxtImgType "รูปภาพ"
+  ${Else}
+    StrCpy $TxtOpen "Open"
+    StrCpy $TxtMerge "Merge selected files"
+    StrCpy $TxtSplit "Split pages"
+    StrCpy $TxtImages "Convert to images"
+    StrCpy $TxtPrint "Print"
+    StrCpy $TxtPrintAll "Merge and print"
+    StrCpy $TxtToPdf "Convert to PDF with GR Acrobat"
+    StrCpy $TxtPdfType "PDF Document"
+    StrCpy $TxtImgType "Image"
+  ${EndIf}
+FunctionEnd
+
 !define MUI_ICON   "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"
 !define MUI_ABORTWARNING
@@ -157,6 +218,7 @@ FunctionEnd
 
 Section "GR Acrobat（必需）" SecMain
   SectionIn RO
+  Call PickMenuTexts
 
   ; 先卸载旧版「PDF 工作台」，避免两个程序同时登记 .pdf
   ReadRegStr $1 HKLM "${OLDKEY}" "UninstallString"
@@ -183,8 +245,8 @@ Section "GR Acrobat（必需）" SecMain
   CreateShortcut "$SMPROGRAMS\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
 
   ; 登记为可以打开 .pdf 的程序（出现在「打开方式」和「默认应用」里）
-  WriteRegStr HKCR "${PROGID}" "" "PDF 文档"
-  WriteRegStr HKCR "${PROGID}" "FriendlyTypeName" "PDF 文档"
+  WriteRegStr HKCR "${PROGID}" "" "$TxtPdfType"
+  WriteRegStr HKCR "${PROGID}" "FriendlyTypeName" "$TxtPdfType"
   WriteRegStr HKCR "${PROGID}\DefaultIcon" "" "$INSTDIR\${EXENAME},0"
   WriteRegStr HKCR "${PROGID}\shell" "" "open"
   WriteRegStr HKCR "${PROGID}\shell\open" "FriendlyAppName" "${APPNAME}"
@@ -241,8 +303,8 @@ Section "GR Acrobat（必需）" SecMain
   WriteRegStr HKLM "Software\RegisteredApplications" "${APPNAME}" "${REGBASE}\Capabilities"
 
   ; 也能直接看图片
-  WriteRegStr HKCR "${IMGPROGID}" "" "图片"
-  WriteRegStr HKCR "${IMGPROGID}" "FriendlyTypeName" "图片"
+  WriteRegStr HKCR "${IMGPROGID}" "" "$TxtImgType"
+  WriteRegStr HKCR "${IMGPROGID}" "FriendlyTypeName" "$TxtImgType"
   WriteRegStr HKCR "${IMGPROGID}\DefaultIcon" "" "$INSTDIR\${EXENAME},0"
   WriteRegStr HKCR "${IMGPROGID}\shell" "" "open"
   WriteRegStr HKCR "${IMGPROGID}\shell\open" "FriendlyAppName" "${APPNAME}"
@@ -259,13 +321,14 @@ Section "GR Acrobat（必需）" SecMain
   WriteRegStr HKCR "${PDFMENU}" "Icon" "$INSTDIR\${EXENAME},0"
   WriteRegStr HKCR "${PDFMENU}" "SubCommands" ""
   WriteRegStr HKCR "${PDFMENU}" "MultiSelectModel" "Player"
-  !insertmacro MenuItem "01open"  "打开" "" "0"
-  !insertmacro MenuItem "02merge" "合并所选文件" "--merge" "1"
-  !insertmacro MenuItem "03split" "拆分页面" "--split" "0"
-  !insertmacro MenuItem "04image" "转为图片" "--pdf2img" "0"
-  !insertmacro MenuItem "05print" "打印" "--print" "0"
+  !insertmacro MenuItem "01open"  "$TxtOpen" "" "0"
+  !insertmacro MenuItem "02merge" "$TxtMerge" "--merge" "1"
+  !insertmacro MenuItem "03split" "$TxtSplit" "--split" "0"
+  !insertmacro MenuItem "04image" "$TxtImages" "--pdf2img" "0"
+  !insertmacro MenuItem "05print" "$TxtPrint" "--print" "0"
+  !insertmacro MenuItem "06printall" "$TxtPrintAll" "--printall" "1"   ; 所选 PDF 按名称顺序一起打印
   ; 图片上：用 GR Acrobat 转为 PDF（多选的图片按顺序合成一个 PDF）
-  WriteRegStr HKCR "${IMGMENU}" "MUIVerb" "用 GR Acrobat 转为 PDF"
+  WriteRegStr HKCR "${IMGMENU}" "MUIVerb" "$TxtToPdf"
   WriteRegStr HKCR "${IMGMENU}" "Icon" "$INSTDIR\${EXENAME},0"
   WriteRegStr HKCR "${IMGMENU}" "MultiSelectModel" "Player"
   WriteRegStr HKCR "${IMGMENU}\command" "" '"$INSTDIR\${EXENAME}" --img2pdf "%1"'

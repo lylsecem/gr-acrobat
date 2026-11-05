@@ -269,6 +269,11 @@ const TEXTS = {
   '正在打开打印窗口…': ['Opening the print window…', 'กำลังเปิดหน้าต่างพิมพ์…'],
   '打印失败：': ['Printing failed: ', 'พิมพ์ไม่สำเร็จ: '],
 
+  // ---- 合并打印 (Explorer's right-click menu)
+  '合并打印 {n} 个文件': ['Merge and print: {n} files', 'รวมแล้วพิมพ์ {n} ไฟล์'],
+  '有 {n} 个文件没有打印': ["{n} files weren't printed", 'มี {n} ไฟล์ที่ไม่ได้พิมพ์'],
+  '这些文件打不开，或者没有输入密码：': ["These files couldn't be opened, or their password wasn't given:", 'ไฟล์เหล่านี้เปิดไม่ได้ หรือไม่ได้ใส่รหัสผ่าน:'],
+
   // ---- updates
   '立即更新': ['Update now', 'อัปเดตเลย'],
   '发现新版本 {v}': ['New version {v}', 'มีเวอร์ชันใหม่ {v}'],
