@@ -3210,8 +3210,6 @@ if (window.electronAPI) {
   const enqueue = (l) => { chain = chain.then(() => handleLaunch(l)).catch((err) => console.error(err)); };
   window.electronAPI.onLaunch(enqueue);
   window.electronAPI.ready().then((list) => list.forEach(enqueue));
-  // Closed to the tray: its documents close too, as when the program quits.
-  window.electronAPI.onClosedToTray(() => { chain = chain.then(() => closeDocs([...docs])).catch((err) => console.error(err)); });
   window.electronAPI.getSettings().then((s) => {
     settingsSeen = s;
     $('#appVersion').textContent = t('版本 {v}', { v: s.version });

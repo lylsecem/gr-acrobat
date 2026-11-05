@@ -86,10 +86,15 @@ function mt(zh, vars) {
 const shownError = (message) => Object.assign(new Error(message), { shown: true });
 // Resident mode: start hidden at login and stay in the tray, so opening a PDF never pays the cold start.
 // Windows keeps it as a login item; elsewhere (development only) the settings file stands in.
+// GR_TEST_RESIDENT (the tests) acts as if it were on, without adding the program to Windows' startup list.
 function residentEnabled() {
+  if (process.env.GR_TEST_RESIDENT) return true;
   if (process.platform !== 'win32') return !!readSettings().resident;
+  // executableWillLaunchAtLogin: the entry the installer writes (Electron's own openAtLogin and launchItems see only
+  // entries also listed under StartupApproved, which only Electron's setLoginItemSettings adds). It is false when the
+  // entry is switched off in Task Manager.
   const items = app.getLoginItemSettings({ path: process.execPath, args: ['--background'] });
-  return items.openAtLogin || items.launchItems.some((i) => i.name === APP_NAME && i.enabled);
+  return items.openAtLogin || items.executableWillLaunchAtLogin || items.launchItems.some((i) => i.name === APP_NAME && i.enabled);
 }
 function setResident(on) {
   if (process.platform === 'win32') {
@@ -574,9 +579,15 @@ function createWindow({ show }) {
   mainWindow.loadURL(`app://gr/index.html?lang=${lang}`);
   mainWindow.once('ready-to-show', () => { perf('ready-to-show'); if (show) mainWindow.show(); });
   mainWindow.on('close', (e) => {
-    // In resident mode closing hides the window; the tray's 退出 really quits. The documents close with it, as
-    // they would if the program quit, so the next file opened is not shown among old ones.
-    if (!quitting && residentEnabled()) { e.preventDefault(); mainWindow.hide(); mainWindow.webContents.send('closed-to-tray'); }
+    // In resident mode closing hides the window; the tray's 退出 really quits. Hidden, the page starts afresh, as it
+    // would if the program had quit: no document, no 合并拆分 board, nothing half done comes back with the next file.
+    // Launches arriving meanwhile wait for the new page (app:ready).
+    if (!quitting && residentEnabled()) {
+      e.preventDefault();
+      mainWindow.hide();
+      rendererReady = false;
+      mainWindow.webContents.reload();
+    }
   });
   mainWindow.on('closed', () => { mainWindow = null; rendererReady = false; });
 }

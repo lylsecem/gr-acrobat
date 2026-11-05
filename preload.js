@@ -26,8 +26,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   choosePdfPath: (suggested) => ipcRenderer.invoke('convert:pdf-path', suggested),
   writePdf: (file, bytes) => ipcRenderer.invoke('convert:write-pdf', file, bytes),
   chooseFolder: (start) => ipcRenderer.invoke('convert:folder', start),
-  // The window was closed in resident mode (hidden in the tray): its documents close
-  onClosedToTray: (callback) => ipcRenderer.on('closed-to-tray', () => callback()),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setResident: (on) => ipcRenderer.invoke('settings:set-resident', on),
   setLang: (lang) => ipcRenderer.invoke('settings:set-lang', lang),

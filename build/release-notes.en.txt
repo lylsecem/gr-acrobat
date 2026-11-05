@@ -1,3 +1,3 @@
-3.1.2
-- New “Merge and print” in the right-click menu: select several PDFs in a folder, right-click and choose it. They print one after another in file name order (as File Explorer lists them by name), straight to the window where you pick the printer.
-- The right-click menu in File Explorer (Open, Merge selected files, Split pages, Convert to images and Print under “GR Acrobat”, and “Convert to PDF with GR Acrobat” on pictures) and the file type names now follow the language of Windows: Chinese on Chinese Windows, Thai on Thai Windows, English on any other.
+3.1.3
+- Fixed: with “Preload at startup” on, closing the window now makes the program forget every document and everything on the Merge & split board, and wait in the background. The next “Merge selected files” (or any other action) shows only the files chosen that time, not those from before.
+- Fixed: after installing or updating, “Preload at startup” showed as unticked although it was on, and closing the window quit the program.

@@ -41,7 +41,8 @@ tests/         端到端测试、测试文件生成（make_fixtures.py 只清空
   写文件只有 `pdf:save-beside`（原名_N.pdf，绝不覆盖）、`pdf:replace`（先写临时文件再替换）、页面转图片的
   `export:folder` / `export:image`（只在文档旁边或「转换」里用文件夹窗口选的文件夹里写 png/jpg，同名加「 (2)」，
   绝不覆盖），以及图片转 PDF 的 `convert:write-pdf`（只写到 Windows 保存窗口里选的那个路径）；`export:show` 只在
-  资源管理器里显示它刚存的文件。测试用 `GR_TEST_DIALOGS`（一个 JSON 文件）代替保存窗口和文件夹窗口的回答。
+  资源管理器里显示它刚存的文件。测试用 `GR_TEST_DIALOGS`（一个 JSON 文件）代替保存窗口和文件夹窗口的回答。`GR_TEST_RESIDENT` 让程序当作开了「开机后台预加载」，
+  而不改 Windows 的开机启动列表（预加载模式下关闭窗口会隐藏并重新载入页面，忘记这次的一切）。
 - **代码风格**：两个空格缩进；注释用英文、说明「为什么」；改动只碰需要的地方。
 - **安装程序**（build/installer.nsi）：PDFium 组件放在 `thumbs\<版本>`（资源管理器会占用旧的 DLL）；旧版本目录
   用 `/REBOOTOK` 删除，并定义了 `MUI_FINISHPAGE_NOREBOOTSUPPORT`（否则完成页会默认「立即重启」）；组件用

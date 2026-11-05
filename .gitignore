@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-beta/
 tests/.fixtures/
 tests/.out/
 tests/.cache/
